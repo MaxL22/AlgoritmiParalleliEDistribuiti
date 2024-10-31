@@ -32,6 +32,7 @@
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{tikz}
+\usepackage{xfrac}
 
 \begin{document}
 	\initcurrdate
@@ -1489,6 +1490,220 @@ Cerca (A, n, x) {
 	
 	% End videolez 9
 	
+	
+	\paragraph{Come risolvere replica in parallelo:} prima idea, algoritmo CREW, $n$ processori copiano nelle $n$ celle il valore $\alpha$
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$k = 1$*) to (*$n$*) par do
+		Q[(*$k$*)] = (*$\alpha$*)
+	\end{lstlisting}
+	\textbf{Prestazioni}: 
+	$$ p = n, \;\; t = 2, \;\; E \sim \frac{n}{n \cdot 2} \rightarrow c \neq 0 $$
+	
+	\nn
+	
+	Seconda idea, per \textbf{abbassare} il \textbf{numero di processori} usati dalla replica: \textbf{Wyllie}, raggruppo gli $n$ processori in $\log n$ elementi, quindi il processore $k$ si occuperà di caricare $\alpha$ nelle celle di posizione tra $(k-1) \log n + 1$ e $k \log n$.\\
+	
+	Codice: 
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$k = 1$*) to (*$\sfrac{n}{\log n}$*) par do 
+		for (*$i = 1$*) to (*$\log n$*) do
+			Q[(*$(k-1) \log n + i$*)] = (*$\alpha$*)
+	\end{lstlisting}
+	Il numero di processori è di $n/\log n$, di conseguenza le \textbf{prestazioni}: 
+	$$ p = \frac{n}{\log n}, \;\; t = c \log n, \;\; E = \frac{n}{\frac{n}{\log n} \cdot c \log n}  = \frac{1}{c} \neq 0 $$
+	Comunque si tratta di un algoritmo CREW.\\
+	
+	\newpage
+	
+	Problema: tutti leggono $\alpha$ contemporaneamente, rendendo l'algoritmo CREW, quindi, terza idea, \textbf{per renderlo EREW-PRAM}: 
+	\begin{itemize}
+		\item \textbf{Costruisco} il \textbf{vettore} $\alpha, 0, 0, \, ... \, , 0$
+		\item Eseguo \textbf{somme-prefisse}
+	\end{itemize}
+	
+	Codice per \textbf{ottenere il vettore} $\alpha, 0, 0, \, ... \, , 0$
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	Input ((*$\alpha$*))
+	Q[1] = (*$\alpha$*)
+	for (*$k = 2$*) to (*$n$*) par do
+		Q[(*$k$*)] = 0 
+	\end{lstlisting}
+	Lo 0 è una costante e non deve essere letta.\\
+	
+	Riduzione dei processori: richiederà numero di processori $p = n/\log n$ e $t = \log n$ ad entrambi gli step, quindi in totale
+	$$ p = \frac{n}{\log n}, \;\; t = \log n, \;\; E = c \neq 0 $$
+	
+	\paragraph{Riassunto:} valutazione polinomio con EREW-PRAM:
+	\begin{itemize}
+		\item Costruisco $Q[k] = \alpha$ con replica
+		$$ p = \frac{n}{\log n}, \;\; t = \log n $$
+		
+		\item Costruisco $Q[k] = \alpha^k$ con prodotto prefisso
+		$$ p = \frac{n}{\log n}, \;\; t = \log n $$
+		
+		\item Calcolo il prodotto interno $\langle A, Q \rangle$
+		$$ p = \frac{n}{\log n}, \;\; t = \log n $$
+	\end{itemize}
+	In totale:
+	$$ p = \frac{n}{\log n}, \;\; t = \log n, \;\; E = \frac{T(n,1)}{p(n) T(n, p(n))} \sim \frac{2n}{\frac{n}{\log n} \log n} \rightarrow c \neq 0 $$
+	
+	\newpage
+	
+	%Nuovo problema
+	
+	\subsection{Ricerca di un elemento}
+	Trovare se il valore $\alpha$ è presente tra le $n$ celle, l'ultima cella assumerà valore $1$ se esiste il valore cercato all'interno della memoria considerata. Definizione: 
+	\begin{itemize}
+		\item \textbf{Input:} $M[1], M[2], \, ... \, , M[n]$, $\alpha$
+		\item \textbf{Output:} $M[n] = 1$ se $\exists k$ t.c. $M[k] =\alpha$, altrimenti $0$
+	\end{itemize}
+	
+	Algoritmo sequenziale classico: $t=n$ controllo tutte le celle; se il vettore è ordinato (ordinamento costo $O(n \log n)$) posso fare ricerca dicotomica ($t = \log n$).\\
+	Algoritmo quantistico (recente, del 1996) su input non ordinato (interferenza quantistica): $t = \sqrt{n}$.\\
+	
+	Algoritmi \textbf{paralleli per ricerca} di $\alpha$: prima idea, CRCW, si usa un flag $F$
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	F = 0
+	for (*$k=1$*) to (*$n$*) par do
+		if (M[(*$k$*)] == (*$\alpha$*))
+			F = 1
+	M[(*$n$*)] = F
+	\end{lstlisting}
+	
+	Se uno degli $n$ processori trova nella sua cella dedicata il valore corretto il flag viene messo ad uno, il valore del flag viene messo in $M[n]$ alla fine. Abbiamo una lettura concorrente di $\alpha$ ed una scrittura concorrente di $F$ per tutti i processori che trovano $\alpha$ nello stesso momento.\\
+	
+	Prestazioni: 
+	$$ p(n) = n \;\;\;\;\; t = c $$
+	
+	Perché usiamo $F$? Per non perdere il valore di $M[n]$?
+	
+	\newpage
+	
+	\textbf{Seconda idea}: algoritmo CREW
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$k=1$*) to (*$n$*) par do 
+		M[(*$k$*)] = (M[(*$k$*)] == (*$\alpha$*) ? 1 : 0)
+	
+	Max-Iterato(M[1], ... , M[(*$n$*)])
+	\end{lstlisting}
+	
+	Il risultato viene scritto in ogni cella, e poi bisogna mettere $1$ in $M[n]$ se c'è almeno un $1$ all'interno delle celle. Per l'ultimo passaggio si può fare un Max-Iterato su tutte le celle (stesso modulo della somma-iterata).\\
+	
+	\textbf{Prestazioni}: 
+	\begin{itemize}
+		\item Per la prima parte: $p(n) = n, \;\; t = c$, ma applicando Wyllie: 
+		$$ \implies p(n) = \frac{n}{\log n} \;\;\;\; t = \log n$$
+		\item Per il Max-Iterato 
+		$$ p(n) = \frac{n}{\log n} \;\;\;\; t = \log n $$
+	\end{itemize}
+	Risultato: 
+	$$ p(n) = O (n/\log n) \;\;\;\; t = O (\log n) $$
+	
+	\newpage
+	
+	\textbf{Terza idea}: algoritmo EREW
+	\begin{enumerate}
+		\item Usa modulo replica per $\alpha$
+		$$ \alpha \rightarrow A[1], \, ... \, , A[n] $$
+		\item Confronto con tutte le celle: 
+		\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$k=1$*) to (*$n$*) par do 
+		M[(*$k$*)] = (M[(*$k$*)] == A[(*$k$*)] ? 1 : 0)
+		\end{lstlisting}
+		\item Max-iterato($M[1], \, ... \, , M[n]$) per spostare il valore $1$ nell'ultima cella
+	\end{enumerate}
+	
+	\textbf{Prestazioni}: 
+	Step 2 e 3 vengono risolti (come nel precedente) con $ p(n) = n/\log n$ e $t = \log n$.  Mentre il passo 1 $ p(n) = n/\log n$ e $t = \log n$.\\
+	Totale: 
+	$$ p = \frac{n}{\log n}, \;\; t = \log n, \;\; E = c \neq 0 $$
+	
+	Quindi abbiamo un algoritmo parallelo EREW efficiente.\\
+	
+	\vfill
+	
+	\paragraph{Varianti di questo codice per problemi legati:}
+	\begin{itemize}
+		\item \textbf{conteggio di} $\alpha$ \textbf{in} $M$: il Max-Iterato diventa una sommatoria, conta quante celle hanno trovato il valore
+		\item \textbf{posizione massima di} $\alpha$ \textbf{in} $M$: al posto di scrivere $1$ se trovo il valore scrivo $k$, dove questo è l'indice della cella 
+		\item \textbf{posizione minima di} $\alpha$ \textbf{in} $M$: modifico come sopra scrivendo $k$ al posto che $1$ ma l'ultimo passaggio diventa una OP-Iterata, dove
+		$$ OP (x,y) = \begin{cases}
+			\min (x,y) & \text{ if } x \neq 0 \text{ and } y \neq 0 \\
+			\max (x,y) & \text{ otherwise}
+		\end{cases}$$
+	\end{itemize}
+	
+	
+	\newpage
+	
+	\subsection{Problema dell'ordinamento}
+	
+	Formalmente chiamato \textbf{ranking}. Definizione:
+	\begin{itemize}
+		\item \textbf{Input:} $M[1], \, ... \, , M[n]$
+		
+		\item \textbf{Output:} permutazione $p: \{1, \, ... \, , n\} \rightarrow \{1, \, ... \, , n\}$ tale che
+		$$ M[p(1)] \leq M[p(2)] \leq \, ... \, \leq M[p(n)] $$
+		dove $p(i)$ indica l'indice dell'elemento del vettore $M$ in che va in posizione $i$
+	\end{itemize}
+	
+	In genere gli algoritmi di ordinamento sono basati sui confronti, guardano chi è il più piccolo.\\
+	Gli algoritmi di ordinamento basati sul confronto hanno 
+	$$ t = \Theta (n \log n) $$
+	
+	Dimostrazione (circa) del \textbf{lower bound}: albero di decisione = algoritmo di ordinamento. Costruisco un albero in cui ad ogni nodo avviene un confronto.\\
+	Esempio di nodo: 
+	\begin{center}
+		\begin{tikzpicture}
+			\node (A) at (0,0) {$a \leq b$};
+			\node (B) at (-2,-2) {$b \leq c$};
+			\node (C) at (2,-2) {$d \leq e$};
+			
+			\draw[->] (A) to node[midway, above] { sì } (B);
+			\draw[->] (A) to node[midway, above] { no } (C);
+		\end{tikzpicture}
+	\end{center}
+	
+	Le foglie sono una permutazione che permette di ordinare l'input.\\
+	L'altezza dell'albero rappresenta il numero di confronti effettuati nel caso peggiore, di conseguenza il tempo dell'algoritmo di ordinamento.\\
+	
+	\textbf{Osservazione}: il numero di foglie deve essere $\geq n!$ in quanto questi sono i possibili ordinamenti di $n$ elementi.\\
+	Per un albero di altezza $t$ il numero massimo di foglie è $2^t$
+	$$ 2^t \geq \text{ foglie } \geq n! \implies t \geq \log n! $$
+	$$ \log n! \geq \log \prod_{i = n/2 + 1}^n i \geq \log \left(\frac{n}{2}\right)^{n/2} = \frac{n}{2} \log \frac{n}{2} \sim n \log n $$
+	
+	\newpage
+	
+	\textbf{Primo approccio parallelo } (basato su algoritmo di conteggio $t = \Theta (n^2)$).\\
+	
+	Assunzione: $n$ è una potenza di 2 e gli elementi sono $\neq$ tra loro.\\
+	
+	Sequenziale CountingSort: $M[i]$ va in posizione $k$ $\Leftrightarrow$ $k$ elementi sono $\leq M[i]$ in $M$.\\
+	
+	Usiamo il vettore 
+	$$ V[1], V[2], \, ... \, , V[n] \; \text{ dove }\; V[i] = k $$
+	
+	Algoritmo sequenziale counting:
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$i = 1$*) to (*$n$*)
+		V[(*$i$*)] = 0
+		
+	for (*$i=1$*) to (*$n$*)
+		for (*$j=1$*) to (*$n$*)
+			if (M[(*$j$*)] < M[(*$i$*)])
+				V[(*$i$*)]++
+		
+	for (*$i=1$*) to (*$n$*)
+		F[V[(*$i$*)]] = M[(*$i$*)]
+	for (*$i=1$*) to (*$n$*)
+		M[(*$i$*)] = F[(*$i$*)]
+	\end{lstlisting}
+	
+	Conto quante celle hanno valore minore di $M[i]$ ed ottengo la posizione del valore nel vettore finale.\\
+	Gli ultimi due \texttt{for} servono a riscrivere il vettore in modo ordinato.\\
+	
+	%Slide 10 su 12
+	%End lezione 10
 	
 	
 \end{document}
