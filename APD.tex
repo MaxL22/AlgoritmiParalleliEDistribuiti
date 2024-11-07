@@ -1598,6 +1598,8 @@ Cerca (A, n, x) {
 	\end{itemize}
 	Risultato: 
 	$$ p(n) = O (n/\log n) \;\;\;\; t = O (\log n) $$
+	L'efficienza: 
+	$$ E \rightarrow c \neq 0$$
 	
 	\newpage
 	
@@ -1674,6 +1676,8 @@ Cerca (A, n, x) {
 	
 	\newpage
 	
+	\subsubsection{CountingSort}
+	
 	\textbf{Primo approccio parallelo } (basato su algoritmo di conteggio $t = \Theta (n^2)$).\\
 	
 	Assunzione: $n$ è una potenza di 2 e gli elementi sono $\neq$ tra loro.\\
@@ -1705,5 +1709,155 @@ Cerca (A, n, x) {
 	%Slide 10 su 12
 	%End lezione 10
 	
+	\paragraph{Prestazioni:} la fase pesante è quella dei 2 \texttt{for} innestati, effettua $n^2$ confronti, quindi $T(n,1) = n^2$.\\
+	
+	\newpage
+	
+	\paragraph{Versione parallela:} passaggi
+	
+	\begin{enumerate}
+		\item $\forall j,i$ ho un \textbf{processore} $P_{i,j}$ che effettua 
+		$$ M[j] \leq M[i] ? $$
+		Poniamo il \textbf{risultato} del confronto in una \textbf{matrice booleana}
+		$$ V[i,j] = (M[j] \leq M[i] ? 1 : 0 )$$
+		Quindi la $i$-esima riga individua gli elementi di $M$ che sono $\leq M[i]$.\\
+		
+		\item $\forall i$ effettuo la \textbf{sommatoria parallela} della $i$-esima riga (sommo i valori interni a tutta la riga, ogni riga), ottenendo
+		$$
+		\implies \begin{array}{c}
+			V[1,n] \\
+			V[2,n] \\
+			\vdots \\
+			V[n,n] \\
+		\end{array}
+		\xrightarrow[\text{ (di prima) }]{\text{ coincide con }}
+		\implies \begin{array}{c}
+			V[1] \\
+			V[2] \\
+			\vdots \\
+			V[n] \\
+		\end{array}
+		$$
+		In questo modo, alla fine della somma, trovo quanti valori sono inferiori di $i$.\\
+	\end{enumerate}
+	
+	\paragraph{Codice:} 
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$1 \leq i$*), (*$j \leq n$*) par do
+		V[(*$i$*), (*$j$*)] = (M[(*$j$*)] (*$\leq$*) M[(*$i$*)] ? 1 : 0)
+	for (*$i=1$*) to (*$n$*) par do
+		Sommatoria(V[(*$i,1$*)], V[(*$i,2$*)], ... , V[(*$i,n$*)])
+	for (*$i=1$*) to (*$n$*) pardo
+		M[V[(*$i$*), (*$n$*)]] = M[(*$i$*)]
+	\end{lstlisting}
+	
+	Per \textbf{ogni coppia} $i,j$ c'è \textbf{un processore} che lavora in parallelo per eseguire il confronto, il \textbf{risultato} viene \textbf{memorizzato} nella cella $V[i,j]$ di una \textbf{matrice booleana}. Vuol dire che ci sono $n^2$ \textbf{processori}.\\
+	Poi viene effettuata la \textbf{somma parallela} dei valori presenti in \textbf{ogni riga}.\\
+	Infine si va a \textbf{scrivere} nel vettore $M$ \textbf{l'array ordinato}. Ogni valore $V[i,n]$ va ad indicare quanti elementi sono minori di $i$.\\
+	
+	\paragraph{Prestazioni:} si tratta di un algoritmo CREW (accesso concorrente nella prima fase)
+	\begin{itemize}
+		\item Prima fase: 
+		$$ p(n) = n^2, \;\;\;\; T(n, n^2) = 4 $$
+		Per il tempo le fasi sono \texttt{LD}, \texttt{LD}, \texttt{JZ}, \texttt{ST}. Usando Wyllie si può ottenere
+		$$ p(n) = n^2/\log n, \;\;\;\; t \sim \log n $$
+		
+		\item Seconda fase: $n$ moduli sommatoria, quindi 
+		$$ p(n) = n^2/\log n, \;\;\;\; t \sim \log n $$
+		
+		\item Terza fase 
+		$$ p(n) = n \;\;\;\; t = 3 $$
+	\end{itemize}
+	
+	In \textbf{totale}
+	$$ p \sim \frac{n^2}{\log n}, \;\;\;\; t \sim \log n $$
+	$$ E = \frac{n \log n}{\frac{n^2}{\log n} \cdot \log n}  = \frac{\log n}{n} \rightarrow 0 $$
+	Quindi non è efficiente.\\
+	
+	\vfill
+	
+	\paragraph{Algoritmi di ordinamento paralleli: }
+	\begin{itemize}
+		\item \textbf{CountingSort}: 
+		$$ E =  \frac{\log n}{n} \rightarrow 0 $$
+		\item \textbf{BitSort}:
+		$$ E = \frac{1}{\log n} \rightarrow 0 $$
+		ma ci tende lentamente
+		\item \textbf{Cole} (1988)
+		$$ E \rightarrow c \neq 0 $$
+		ma è complicato
+	\end{itemize}
+	
+	\newpage
+	
+	\subsubsection{BitSort}
+	
+	Algoritmo sequenziale MergeSort: dai che sai come funziona, non devo scrivertelo. Tempo: $T(n, 1) = n \log n$.\\
+	
+	Prendendo ispirazione dal MergeSort, effettuarlo in parallelo vorrebbe dire effettuare $\log n$ passi paralleli.\\
+	
+	Ma purtroppo \textbf{NON è parallelizzabile} ed ottengo angora $t \sim n \log n$.\\
+	
+	\textit{Quando il passaggio di merge dei valori diventa facile?} Quando i \textbf{due vettori} sono \textbf{ordinati} ed i \textbf{valori del primo} sono \textbf{tutti minori} dei \textbf{valori del secondo}, in questo caso per effettuare il merge è sufficiente concatenare i due vettori.\\
+	
+	Con l'uso di sequenze di numeri bitoniche possiamo garantire che questa proprietà sia rispettata.\\
+	
+	\paragraph{Operazioni elementari su sequenze: }
+	\begin{itemize}
+		\item \textbf{Reverse}: inverte il vettore
+		$$ REV(A[1], A[2], \, \dots \, , A[n] $$
+		$$ A[1] \leftarrow A[n], \;\; A[2] \leftarrow A[n-1], \;\; \dots \;\; A[n] \leftarrow A[1] $$
+		
+		\item \textbf{Minmax}: divide il vettore in due, prende l'elemento $k$ e l'elemento $k + n/2$, rispettivamente per la prima e seconda metà. Nel primo dei due scrive il minimo dei due, nel secondo scrive il massimo. Ripeto l'operazione per tutti gli elementi delle metà. In questo modo nella prima metà avrò tutti i minimi, nella seconda tutti i massimi. 
+		$$ A[1] \, \dots \, A[k], \, \dots \, A[\sfrac{n}{2}] \, \dots \, A[k + \sfrac{n}{2}] \, \dots \, A[n]$$
+		 $$ A[k] \leftarrow \min \{A[k], A[k + \sfrac{n}{2}]\}, \;\; A[k + \sfrac{n}{2}] \leftarrow \max \{A[k], A[k + \sfrac{n}{2}]\}, \;\; \dots $$
+	\end{itemize}
+	
+	\newpage
+	
+	
+	\paragraph{Algoritmi paralleli per queste operazioni: }
+	\item \textbf{Procedura} $Rev(A)$: da 1 a $n/2$, scambio i valori di ogni cella con la sua simmetrica
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$1 \leq k \leq \sfrac{n}{2}$*) par do
+		Swap(A[(*$k$*)], A[(*$n-k+1$*)])
+	\end{lstlisting}
+	Prestazioni: lavora su metà dei valori e deve fare \texttt{LD}, \texttt{LD}, \texttt{ST}, \texttt{ST}
+	$$ p(n) = \frac{n}{2}, \;\;\;\; t = 4 $$
+	
+	\item \textbf{Procedura} $Minmax(A)$:
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+		for (*$1 \leq k \leq \sfrac{n}{2}$*) par do
+			if (A[(*$k$*)] > A[(*$k + \sfrac{n}{2}$*)])
+				Swap(A[(*$k$*)], A[(*$k + \sfrac{n}{2}$*)])
+	\end{lstlisting}
+	Prestazioni: richiede solamente un'operazione in più di prima (il confronto)
+	$$ p(n) = \frac{n}{2}, \;\;\;\; t = 5 $$
+	
+	\paragraph{Particolari sequenze numeriche:} Definizioni formali: 
+	\begin{itemize}
+		\item \textbf{Unimodale}: $A$ è unimodale iff $\exists k$ tale che 
+		$$ A[1] > A[2] > \, \dots \, > A[k] < A[k+1] < \, \dots \, < A[n] $$
+		oppure 
+		$$ A[1] < A[2] < \, \dots \, < A[k] > A[k+1] > \, \dots \, > A[n] $$
+		
+		\item \textbf{Bitonica}: $A$ è bitonica iff $\exists$ una permutazione ciclica di $A$ tale che dia una sequenza unimodale: $\exists j$ tale che
+		$$ A[j], \, \dots \, , A[n], A[1], \, \dots \, , A[j-1] $$ 
+		è unimodale
+	\end{itemize}
+	Sostanzialmente, una sequenza unimodale ha un picco (massimo o minimo), mentre una bitonica ha due picchi , un minimo ed un massimo (scende, sale e poi scende di nuovo o viceversa) e se la "giro" può diventare un picco solo. \\
+	%Da mettere sotto? Da fare grafico? Chi lo sa
+	
+	\newpage
+	
+	\textbf{Esempi}: 
+	$$ 2 \;\; 4 \;\; 7 \;\; 9 \;\; 5 \;\; 3 $$
+	è una serie unimodale, con $9$ come picco.\\
+	
+	$$ 7 \;\; 9 \;\; 5 \;\; 3 \;\; 2 \;\; 4 $$
+	è una serie bitonica, con $9$ e $2$ come picchi (sale, poi scende, poi risale) e posso "girarla" fino a farla diventare quella di prima.\\
+	
+	%Slide 12/14
+	%End L11
 	
 \end{document}
