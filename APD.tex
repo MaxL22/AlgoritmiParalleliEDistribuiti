@@ -1731,7 +1731,7 @@ Cerca (A, n, x) {
 			V[n,n] \\
 		\end{array}
 		\xrightarrow[\text{ (di prima) }]{\text{ coincide con }}
-		\implies \begin{array}{c}
+		\begin{array}{c}
 			V[1] \\
 			V[2] \\
 			\vdots \\
@@ -1805,7 +1805,7 @@ Cerca (A, n, x) {
 	\paragraph{Operazioni elementari su sequenze: }
 	\begin{itemize}
 		\item \textbf{Reverse}: inverte il vettore
-		$$ REV(A[1], A[2], \, \dots \, , A[n] $$
+		$$ REV(A[1], A[2], \, \dots \, , A[n]) $$
 		$$ A[1] \leftarrow A[n], \;\; A[2] \leftarrow A[n-1], \;\; \dots \;\; A[n] \leftarrow A[1] $$
 		
 		\item \textbf{Minmax}: divide il vettore in due, prende l'elemento $k$ e l'elemento $k + n/2$, rispettivamente per la prima e seconda metà. Nel primo dei due scrive il minimo dei due, nel secondo scrive il massimo. Ripeto l'operazione per tutti gli elementi delle metà. In questo modo nella prima metà avrò tutti i minimi, nella seconda tutti i massimi. 
