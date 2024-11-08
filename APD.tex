@@ -1808,7 +1808,7 @@ Cerca (A, n, x) {
 		$$ REV(A[1], A[2], \, \dots \, , A[n]) $$
 		$$ A[1] \leftarrow A[n], \;\; A[2] \leftarrow A[n-1], \;\; \dots \;\; A[n] \leftarrow A[1] $$
 		
-		\item \textbf{Minmax}: divide il vettore in due, prende l'elemento $k$ e l'elemento $k + n/2$, rispettivamente per la prima e seconda metà. Nel primo dei due scrive il minimo dei due, nel secondo scrive il massimo. Ripeto l'operazione per tutti gli elementi delle metà. In questo modo nella prima metà avrò tutti i minimi, nella seconda tutti i massimi. 
+		\item \textbf{MinMax}: divide il vettore in due, prende l'elemento $k$ e l'elemento $k + n/2$, rispettivamente per la prima e seconda metà. Nel primo dei due scrive il minimo dei due, nel secondo scrive il massimo. Ripeto l'operazione per tutti gli elementi delle metà. In questo modo nella prima metà avrò tutti i minimi, nella seconda tutti i massimi. 
 		$$ A[1] \, \dots \, A[k], \, \dots \, A[\sfrac{n}{2}] \, \dots \, A[k + \sfrac{n}{2}] \, \dots \, A[n]$$
 		 $$ A[k] \leftarrow \min \{A[k], A[k + \sfrac{n}{2}]\}, \;\; A[k + \sfrac{n}{2}] \leftarrow \max \{A[k], A[k + \sfrac{n}{2}]\}, \;\; \dots $$
 	\end{itemize}
@@ -1825,7 +1825,7 @@ Cerca (A, n, x) {
 	Prestazioni: lavora su metà dei valori e deve fare \texttt{LD}, \texttt{LD}, \texttt{ST}, \texttt{ST}
 	$$ p(n) = \frac{n}{2}, \;\;\;\; t = 4 $$
 	
-	\item \textbf{Procedura} $Minmax(A)$:
+	\item \textbf{Procedura} $MinMax(A)$:
 	\begin{lstlisting}[escapeinside={(*}{*)}]
 		for (*$1 \leq k \leq \sfrac{n}{2}$*) par do
 			if (A[(*$k$*)] > A[(*$k + \sfrac{n}{2}$*)])
@@ -1859,5 +1859,154 @@ Cerca (A, n, x) {
 	
 	%Slide 12/14
 	%End L11
+	
+	\paragraph{Osservazioni: }
+	\begin{itemize}
+		\item \textbf{Unimodale} $\implies$ \textbf{bitonica}, grazie alla permutazione identità.\\
+		
+		\item In una serie \textbf{bitonica}, gli \textbf{elementi di fine array} devono essere \textbf{maggiori} di quelli di \textbf{inizio array} (o \textbf{viceversa}, dipende dal caso).\\
+		
+		\item Siano $A,B$ due sequenze ordinate crescenti (decrescenti), la \textbf{sequenza} $A \cdot REV(B)$ è \textbf{unimodale}.\\
+	\end{itemize}
+	
+	
+	\paragraph{Proposizione su sequenze bitoniche:} Sia $A$ \textbf{bitonica}, \textbf{eseguo} $MinMax(A)$, ottengo:
+	\begin{itemize}
+		\item \textbf{Due sequenze} $A_{min}$ e $A_{max}$, le quali sono \textbf{bitoniche}.\\
+		
+		\item \textbf{Ogni elemento di} $A_{min}$ è \textbf{minore} di \textbf{ogni elemento di} $A_{max}$.\\
+	\end{itemize}
+	
+	
+	Quindi si può pensare ad un approccio \textit{divide et impera} per le \textbf{serie bitoniche}:
+	\begin{itemize}
+		\item $MinMax$ \textbf{suddivide il problema} di dimensione $n$ in istanze più piccole (che rimarranno bitoniche)
+		
+		\item Il \textbf{merge} di $A_{max}$ e $A_{min}$ avviene \textbf{per concatenazione}
+	\end{itemize}
+	
+	Quindi si minmaxa ricorsivamente fino ad arrivare a coppie di elementi, che $MinMax$ è in grado di ordinare, e la fusione avviene per concatenazione.\\
+	
+	\newpage
+	
+	\paragraph{BitMerge sequenziale: } \hfill
+	
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+	MinMax((*$A$*))
+	if ((*$|A| > 2$*))
+		BitMerge((*$A_{min}$*))
+		BitMerge((*$A_{max}$*))
+	return ((*$A$*))
+	\end{lstlisting}
+	
+	Funziona \textbf{solo con sequenze bitoniche}.\\
+	
+	\paragraph{Correttezza di BitMerge:} si procede per \textbf{induzione}:
+	\begin{itemize}
+		\item \textbf{Base}: $n=2$, una sequenza di lunghezza 2 è banalmente ordinata da $MinMax$.\\
+		
+		\item \textbf{Passo induttivo}: supponiamo corretto per $n=2^k$, dimostriamo che è valido per $2^{k+1} = |A|$
+		\begin{itemize}
+			\item $MinMax$ restituisce $A_{min}$ e $A_{max}$ di lunghezza $2^k$
+			\item $BitMerge(A_{min})$ e $BitMerge(A_{max})$ ordinano $A_{min}$ e $A_{max}$ per ipotesi induttiva
+			\item Alla fine torna $A$ ordinato
+		\end{itemize}
+		\nn
+	\end{itemize}
+	
+	\paragraph{Implementazione parallela di BitMerge:} Ad ogni divisione viene chiamato $MinMax$, fino ad arrivare a coppie, le quali saranno ordinate, alla fine basta concatenare tutte le coppie.\\
+	
+	Tutti i \textbf{moduli MinMax} sullo \textbf{stesso livello} vengono eseguiti \textbf{in parallelo}.\\
+	
+	\newpage
+	
+	\paragraph{Valutazione:} del BitMerge parallelo
+	\begin{itemize}
+		\item Si tratta di un codice \textbf{EREW-PRAM}, tutte le chiamate di $MinMax$ sullo stesso livello vengono effettuate su elementi differenti di $A$
+		
+		\item \textbf{Tempo}: dividendo sempre a metà il vettore, per arrivare a coppie di elementi devo dividere $\log n$ volte, e servono 5 operazioni per il $MinMax$:
+		$$ t = 5 \log n $$
+		
+		\item \textbf{Processori}: Lavorando sempre su tutti i valori ad ogni iterazione, ed ogni processore confronta 2 valori, servono processori pari alla metà dei valori in input:
+		$$ p(n) = \frac{n}{2} $$
+		Sono i processori richiesti da $MinMax$, su lunghezza $n$ ne chiede $n/2$, 2 chiamate su $n/2$ ne richiedono $2 \cdot n/4$, quindi sono sempre $n/2$. Ad ogni passo è sempre $n/2$
+		
+		\item \textbf{Tempo} visto con un \textbf{equazione di ricorrenza}: 
+		$$ T(n) = \begin{cases}
+			5 & n = 2 \\
+			T(\frac{n}{2}) + 5 & \text{ altrimenti }
+		\end{cases}
+		$$
+		$$ T(n) = 5 \log n $$
+		
+		\item \textbf{Efficienza}:
+		$$ E = \frac{n \cdot \log n}{\frac{n}{2} \cdot 5 \log n} \rightarrow c \neq 0 $$
+	\end{itemize} 
+	
+	\newpage
+	
+	\paragraph{Da BitMerge a BitSort:} Si può sfruttare BitMerge come modulo per ordinare sequenze generiche, con l'algoritmo BitSort.\\
+	
+	\paragraph{BitSort sequenziale:} \hfill 
+	\begin{lstlisting}[escapeinside={(*}{*)}]
+		MinMax((*$A$*))
+		if ((*$|A| > 2$*))
+			BitSort((*$A_{min}$*))
+			BitSort((*$A_{max}$*))
+			BitMerge((*$A_{min} \cdot REV (A_{max})$*))
+		return ((*$A$*))
+	\end{lstlisting}
+	
+	Aggiunge un passaggio, BitMerge su $A_{min}$ concatenato a $REV(A_{max})$, ovvero due sequenze unimodali che vengono concatenate in una bitonica. Sostanzialmente serve ad unire in modo corretto le due stringhe, in quanto non ho più la garanzia che tutti gli elementi della prima parte siano minori di tutti gli elementi della seconda.\\
+	
+	BitMerge lavora solo su sequenze bitoniche, quindi le chiamate ricorsive procedono fino a lunghezza 2 che vengono ordinate da $MinMax$, il BitMerge ordina le coppie alla fine della ricorsione, creando dal basso delle sequenze bitoniche.\\
+	
+	\paragraph{Correttezza di BitSort:}
+	\begin{itemize}
+		\item \textbf{Base}: $n=2$, una sequenza di lunghezza 2 è banalmente ordinata da $MinMax$.\\
+		
+		\item \textbf{Passo induttivo}: supponiamo corretto per $n=2^k$, dimostriamo che è valido per $2^{k+1} = |A|$
+		\begin{itemize}
+			\item $MinMax$ restituisce $A_{min}$ e $A_{max}$ di lunghezza $2^k$
+			\item $BitSort (A_{min})$ e $BitSort (A_{max})$ ordinano i rispettivi vettori per ipotesi induttiva
+			\item $BitMerge(A_{min} \cdot REV(A_{max}))$ ordina il vettore in quanto sequenza bitonica
+		\end{itemize}
+		\nn
+	\end{itemize} 
+	
+	\newpage
+	
+	\paragraph{Implementazione parallela di BitSort:} Si procede fino a coppie ordinate, ma rispetto a prima si ha una seconda fase in più nella quale si effettuano tutti i BitMerge (ed i relativi $REV$).\\
+	
+	\paragraph{Valutazione: }
+	\begin{itemize}
+		\item Si tratta, come prima di un algoritmo \textbf{EREW-PRAM}.\\
+		
+		\item \textbf{Tempo}: per la prima fase, come il BitMerge, $t = O(\log n)$. Per la seconda fase si esegue $REV$ ($t$ costante) e BitMerge, che richiede $O(\log n)$, quindi in totale
+		$$ T(n) = O (\log^2 n) $$
+		\nn
+		
+		\item \textbf{Processori}: per tutte le fasi ne servono al massimo $n/2$, quindi:
+		$$ p(n) = n/2 $$
+		\nn
+		
+		\item \textbf{Tempo} visto con un \textbf{equazione di ricorrenza}: 
+		$$ T(n) = \begin{cases}
+			5 & n = 2 \\
+			T(\frac{n}{2}) + 5 + 4 + 5 \log n& \text{ altrimenti }
+		\end{cases}
+		$$
+		$$ T(n) = \frac{5 \log^2 n + 23 \log n - 18}{2} \sim O (\log^2 n) $$
+		\nn
+		
+		\item \textbf{Efficienza}:
+		$$ E = \frac{n \cdot  \log n}{\frac{n}{2} \cdot 5 \log^2 n} \rightarrow \frac{\alpha}{\log n} \rightarrow 0 $$
+		
+		Quindi tende a zero, ma \textbf{lentamente}.\\
+	\end{itemize}
+	
+	%End L12
+	
+	
 	
 \end{document}
