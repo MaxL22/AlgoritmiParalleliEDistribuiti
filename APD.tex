@@ -34,6 +34,9 @@
 \usepackage{tikz}
 \usepackage{xfrac}
 
+\DeclareMathOperator{\des}{des}
+\DeclareMathOperator{\pad}{pad}
+
 \begin{document}
 	\initcurrdate
 	\maketitle 									%Titolo 
@@ -2007,6 +2010,130 @@ Cerca (A, n, x) {
 	
 	%End L12
 	
+	\newpage
+	
+	\paragraph{Osservazioni: }
+	\begin{itemize}
+		\item Un buon algoritmo sequenziale, non necessariamente può essere trasformato in un buon algoritmo parallelo (es. MergeSort).\\
+		
+		\item Ma vale anche il contrario, da un buon algoritmo parallelo non sempre si può passare ad un buon algoritmo sequenziale (es. BitSort).\\
+	\end{itemize}
+	
+	\paragraph{Valutazione sequenziale di BitSort:} dobbiamo considerare le chiamate ricorsive per risolvere sequenzialmente il BitSort
+	\begin{itemize}
+		\item BitMerge: 
+		$$ t_{bm} (n) = \begin{cases}
+			O(1) & n = 2 \\
+			2 t_{bm} \left(\frac{n}{2}\right) + O(n) & n > 2 \\
+		\end{cases}
+		$$
+		$O(1)$ se la lunghezza è 2, altrimenti chiamata ricorsiva sulle due metà più il $MinMax$. In totale:
+		$$ t_{bm} (n) = O(n \log n) $$
+		
+		\item BitSort: 
+		$$ t_{bs} (n)  = \begin{cases}
+			O(1) & n = 2 \\
+			2 t_{bs} \left(\frac{n}{2}\right) + O(n \log n) & n > 2 \\
+		\end{cases}
+		$$
+		Come sopra, ma diventa $O(n \log n)$ per il BitMerge interno. In totale: 
+		$$ t_{bs} (n) = O (n \log^2 n) $$
+	\end{itemize}
+	Ovvero peggio del MergeSort sequenziale. \\
+	
+	\newpage
+	
+	
+	\subsection{Tecnica dei Cicli Euleriani}
+	
+	\textbf{Definizioni} base di teoria dei Grafi: 
+	\begin{itemize}
+		\item \textbf{Grafo diretto} $D$: è una coppia $(V,E)$ dove $E \subseteq V^2$, $(v,w) \in E$ indica la presenza di un arco che va da $v$ a $w$.\\
+		
+		\item \textbf{Cammino:} una sequenza di archi tale che il nodo finale di ogni arco coincida con il nodo iniziale dell'arco successivo.\\
+		
+		\item \textbf{Ciclo:} un cammino tale che il nodo finale di $e_k$ coincide con il nodo iniziale di $e_1$.\\
+		
+		\item \textbf{Ciclo Euleriano:} ciclo in cui ogni arco in $E$ compare una e una sola volta.\\
+		
+		\item \textbf{Cammino Euleriano:} un cammino in cui ogni arco viene attraversato una e una sola volta.\\
+		
+		\item \textbf{Grafo Euleriano:} un grafo si definisce tale se contiene un ciclo Euleriano
+	\end{itemize}
+	
+	\paragraph{Notazione:} $\forall v \in V$ definiamo 
+	$$\rho^- (v) = |\{(w,v) \in E\}|$$
+	come il \textbf{grado di entrata} di $v$ (numero di archi entranti) e 
+	$$\rho^+ (v) = |\{(v,w) \in E\}|$$
+	come il \textbf{grado di uscita} di $v$ (numero di archi uscenti).\\
+	
+	\paragraph{Teorema:} $D$ è Euleriano se e solo se $\forall v \in V: \rho^- (v) = \rho^+ (v)$, tutti i nodi devono avere lo stesso numero di archi entranti ed uscenti.\\
+	
+	\newpage
+	
+	Giusto per non fare confusione: un ciclo è Hamiltoniano se e solo se è un ciclo nel grafo dove ogni vertice compare una e una sola volta (vertici, non archi).\\
+	
+	Calcolare se $D$ è Euleriano è un problema efficiente ($O(n^2)$, con $n = |V|$), mentre capire se $D$ è Hamiltoniano si tratta di un problema $\mathcal{NP}$-completo.\\
+	
+	La \textbf{tecnica del Ciclo Euleriano}: viene usata per costruire algoritmi paralleli efficienti che gestiscono strutture dinamiche, come alberi binari.\\
+	
+	Considerando un albero binario, $\forall v \in V$ \textbf{chiamiamo} $\sin(v)$ il figlio sinistro di $v$, $\des (v)$ il figlio destro di $v$ e $\pad(v)$ il padre di $v$.\\
+	
+	Molti problemi be noti usano alberi, es. ricerca, dizionari, query, etc.\\
+	
+	Fondamentale in tali problemi la \textbf{navigazione dell'albero} e per farlo con algoritmi paralleli efficienti \textbf{considereremo delle liste}.\\
+	
+	\paragraph{Per definire una lista: }
+	\begin{itemize}
+		\item \textbf{Primo passo}: associo all'albero binario un ciclo Euleriano, ogni collegamento diventano due archi, uno entrante ed uno uscente. Seguendo il ciclo navigo l'albero.\\
+		
+		\item \textbf{Secondo passo}: da ciclo a cammino Euleriano: ogni nodo $v$ viene espanso in sinistra, centro e destra, $(v,s)$, $(v,c)$, $(v,d)$. Parto dal nodo $(1,s)$ e sostanzialmente una DFS per visitare tutto l'albero. Il nodo centrale permette di passare da figlio sinistro a destro.\\
+		%Da fare esempio?
+		
+		\newpage
+		
+		\item \textbf{Terzo passo}: dal cammino Euleriano costruisco la lista: 
+		$$ S ((v, x)) \; \text{ dove } \; 1 \leq v \leq n, \; x \in \{s,c,d\}$$
+		Le regole cambiano nel caso in cui $v$ sia:
+		\begin{itemize}
+			\item Foglia:
+			$$ S [(v, s)] = (v,c) $$
+			$$ S [(v, c)] = (v,d) $$
+			$$ S [(v, d)] = \begin{cases} 
+				(\pad(v), c) & \text{ se } v = \sin (\pad(v)) \\
+				(\pad(v), d) & \text{ se } v = \des (\pad (v))
+				\end {cases}$$
+			Dalla destra mi sposto al (padre, centro) se sono il figlio di sinistra, altrimenti mi sposto a (padre, destra).
+				
+			\item Nodo interno:
+				$$ S [(v, s)] = (\sin(v),s) $$
+				$$ S [(v, c)] = (\des(v),s) $$
+				$$ S [(v, d)] = 
+				\begin{cases} 
+					(\pad(v), c) & \text{ se } v = \sin (\pad(v)) \\
+					(\pad(v), d) & \text{ se } v = \des (\pad (v))
+				\end{cases}
+				$$
+		\end{itemize}
+	\end{itemize}
+	
+	Algoritmo parallelo per costruire $S$:
+	\begin{itemize}
+		\item Un processore per ogni $v \in V$, quindi per ogni riga della tabella.\\
+		
+		\item Se un nodo ha due figli, verrà letta la riga del padre contemporaneamente da entrambi i figli, due nodi accedono alla stessa riga. Si possono evitare letture concorrenti per avere un algoritmo EREW, usando 
+		$$ p(n) = n \;\;\;\;\; T(n, p(n)) = O(1) $$
+		Applicando Wyllie
+		$$ p(n) = \frac{n}{\log n} \;\;\;\;\; T(n, p(n)) = \log n $$
+	\end{itemize}
+	
+	\vfill 
+	
+	\textbf{N.B:} Manca l'esempio, non penso sia particolarmente complicata la cosa, ma nel caso è sulle slide (piuttosto che rifare 14 alberi e frecce su tikz metto parallelamente i testicoli in un tritacarne).\\
+	
+	\newpage
+	
+	%End L13
 	
 	
 \end{document}
