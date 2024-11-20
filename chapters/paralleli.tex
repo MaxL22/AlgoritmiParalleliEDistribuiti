@@ -1841,7 +1841,7 @@ Fondamentale in tali problemi la \textbf{navigazione dell'albero} e per farlo co
 		\item Calcolo di $A$ e $S$ (successore)
 		\item Calcolo di Somme-Prefisse su $A$ e $S$
 	\end{enumerate}
-	L'output risulta, $\forall v \in V$, all'interno di $A[(v,s)]$ oppure $A[(v,d)]$.\\
+	L'output risulta, $\forall v \in V$, all'interno di $A[(v,s)]$ (se si comincia a contare da 1) oppure $A[(v,d)]$ (se si comincia a contare da 0).\\
 	
 	\paragraph{Prestazioni:} Come prima
 	$$ E = \frac{n}{\frac{n}{\log n} \cdot \log n} \rightarrow c \neq 0 $$
@@ -1865,10 +1865,11 @@ Fondamentale in tali problemi la \textbf{navigazione dell'albero} e per farlo co
 	
 	La realizzazione dei multicore ha potato l'interesse del calcolo parallelo da ambiti scientifici precisi a un ambiente più ampio (consumatore generico).\\
 	
-	Prima del 2000 non c'era multicore, si aumentava il clock, con i relativi problemi di assorbimento di energia e raffreddamento.\\
-	Dopo il 2000 si è aumentato il grado di parallelismo con il multicore, i quali permettono di aver (volendo) clock minori e migliorare consumi e raffreddamento.\\
+	Prima del 2000 non c'era multicore, si puntava ad aumentare il clock, con i relativi problemi riguardanti assorbimento di energia e raffreddamento.\\
 	
-	Ciò ha portato a nuovi sviluppi teorici in ambito di algoritmi paralleli per portare alla creazione si software per i multicore.\\
+	Dopo il 2000 si è aumentato il grado di parallelismo con il multicore, i quali permettono di avere clock minori e di conseguenza migliorare consumi e raffreddamento.\\
+	
+	Ciò ha portato a nuovi sviluppi teorici in ambito di algoritmi paralleli, per portare alla creazione di software per i multicore.\\
 	
 	\newpage
 	
@@ -1879,7 +1880,7 @@ Fondamentale in tali problemi la \textbf{navigazione dell'albero} e per farlo co
 	
 	\paragraph{Caratteristiche:}
 	\begin{itemize}
-		\item \textbf{Processori}: RAM sequenziali, con istruzioni per il calcolo e memoria privata, ma devono anche spedire informazioni (fare da router), quindi servono \textbf{istruzioni per la comunicazione}, ovvero \texttt{send} e \texttt{receive}.\\
+		\item \textbf{Processori}: RAM sequenziali, con istruzioni per il calcolo e memoria privata, ma devono anche spedire informazioni (fare da "router"), quindi servono \textbf{istruzioni per la comunicazione}, ovvero \texttt{send} e \texttt{receive}.\\
 		Da notare che anche la \textbf{comunicazione avviene in parallelo}, quindi se $n$ processori provano a spedire dati a un solo processore, questo dovrà impiegare $n+1$ passi per ricevere tutto.\\
 		
 		\item \textbf{Collegamenti}: di tipo Full-duplex, gli archi del grafo sono non diretti, non avrebbe senso avere canali di comunicazione a un solo senso. Due processori collegati, per comunicare tra di loro impiegano 2 passi (tempo costante), cosa non vera per 2 processori più lontani.\\
