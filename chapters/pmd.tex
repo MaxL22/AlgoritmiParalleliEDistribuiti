@@ -404,7 +404,7 @@ Nuove \textbf{prestazioni}:
 	$$ t = O\left(\frac{n}{p}\right) + O(p)$$
 	
 	\item \textbf{Efficienza}:
-	$$ \frac{n}{ p \cdot \left(O\left(\frac{n}{p}\right) + O(p)\right)} = \frac{n}{O(n) + O(p^2)}$$
+	$$ E = \frac{n}{ p \cdot \left(O\left(\frac{n}{p}\right) + O(p)\right)} = \frac{n}{O(n) + O(p^2)}$$
 	
 	Volendo $O(n)$ al denominatore, per avere $E \rightarrow c \neq 0$ scelgo 
 	$$p^2 = n \implies p = \sqrt{n}$$
@@ -462,9 +462,9 @@ Si può \textbf{generalizzare} a \texttt{MinMax(i,j)}, sfruttando \texttt{Swap(i
 
 \textbf{Tempo} per la versione generica: 
 \begin{itemize}
-	\item Pari: 
+	\item Distanza \textbf{pari}: 
 	$$ T = 2 d(i,j) + 2 $$
-	\item Dispari:
+	\item Distanza \textbf{dispari}:
 	$$ T = 2 d(i,j) + 4 $$
 \end{itemize}
 
