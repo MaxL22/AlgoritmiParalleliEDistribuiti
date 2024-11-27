@@ -318,7 +318,7 @@ Vogliamo calcolare il \textbf{massimo} tra $n$ elementi in input.\\
 
 \textbf{Definizione}: 
 \begin{itemize}
-	\item \textbf{Input}: \texttt{A[1] A[2] \dots A[n]}, $n$ valori
+	\item \textbf{Input}: \texttt{A[1] A[2] \dots \; A[n]}, $n$ valori
 	\item \textbf{Output}: $cont(P_n) = \max\{A[i] | 1 \leq i \leq n\}$, ovvero il contenuto del processore con indice più alto deve essere il massimo tra tutti i valori
 \end{itemize}
 
@@ -469,3 +469,170 @@ Si può \textbf{generalizzare} a \texttt{MinMax(i,j)}, sfruttando \texttt{Swap(i
 \end{itemize}
 
 %End L16
+
+\newpage
+
+\subsection{Problema \texttt{Ordinamento}}
+
+Definizione:
+\begin{itemize}
+	\item \textbf{Input}: \texttt{A[1]  A[2] \dots  \; A[n]}
+	\item \textbf{Output}: $cont(P_1) < cont(P_2) < \, \dots \, < cont(P_n)$, permutazione ordinata
+\end{itemize} 
+
+Algoritmo \textbf{test/swap oblivious} descritto da una sorting network, chiamata \textbf{\texttt{Odd/Even} sorting network}.\\
+
+\textbf{Esempio} con 6 elementi: 
+\begin{center}
+	\begin{tikzpicture} [scale=0.7]
+		\node (1) at (-1,0) {\texttt{A[6]}};
+		\node (1) at (-1,1) {\texttt{A[5]}};
+		\node (1) at (-1,2) {\texttt{A[4]}};
+		\node (1) at (-1,3) {\texttt{A[3]}};
+		\node (1) at (-1,4) {\texttt{A[2]}};
+		\node (1) at (-1,5) {\texttt{A[1]}};
+		
+		% Draw the two parallel lines 
+		\draw (0,0) -- (12,0); 
+		\draw (0,1) -- (12,1); 
+		\draw (0,2) -- (12,2); 
+		\draw (0,3) -- (12,3); 
+		\draw (0,4) -- (12,4); 
+		\draw (0,5) -- (12,5); 
+		
+		% Draw the connecting line 
+		\draw (1,0) -- (1,1);
+		\draw (1,2) -- (1,3);
+		\draw (1,4) -- (1,5);
+		
+		\draw (3,1) -- (3,2);
+		\draw (3,3) -- (3,4);
+		
+		\draw (5,0) -- (5,1);
+		\draw (5,2) -- (5,3);
+		\draw (5,4) -- (5,5);
+		
+		\draw (7,1) -- (7,2);
+		\draw (7,3) -- (7,4);
+		
+		\draw (9,0) -- (9,1);
+		\draw (9,2) -- (9,3);
+		\draw (9,4) -- (9,5);
+		
+		\draw (11,1) -- (11,2);
+		\draw (11,3) -- (11,4);
+		
+		% Nodes
+		\fill (1,0) circle (2pt); 
+		\fill (1,1) circle (2pt); 
+		\fill (1,2) circle (2pt); 
+		\fill (1,3) circle (2pt); 
+		\fill (1,4) circle (2pt); 
+		\fill (1,5) circle (2pt); 
+		
+		\fill (3,1) circle (2pt); 
+		\fill (3,2) circle (2pt); 
+		\fill (3,3) circle (2pt); 
+		\fill (3,4) circle (2pt); 
+		
+		\fill (5,0) circle (2pt); 
+		\fill (5,1) circle (2pt); 
+		\fill (5,2) circle (2pt); 
+		\fill (5,3) circle (2pt); 
+		\fill (5,4) circle (2pt); 
+		\fill (5,5) circle (2pt); 
+		
+		\fill (7,1) circle (2pt); 
+		\fill (7,2) circle (2pt); 
+		\fill (7,3) circle (2pt); 
+		\fill (7,4) circle (2pt); 
+		
+		\fill (9,0) circle (2pt); 
+		\fill (9,1) circle (2pt); 
+		\fill (9,2) circle (2pt); 
+		\fill (9,3) circle (2pt); 
+		\fill (9,4) circle (2pt); 
+		\fill (9,5) circle (2pt); 
+		
+		\fill (11,1) circle (2pt); 
+		\fill (11,2) circle (2pt); 
+		\fill (11,3) circle (2pt); 
+		\fill (11,4) circle (2pt); 
+		
+	\end{tikzpicture}
+\end{center}
+
+Si alternano \textbf{confrontatori} "\textit{dispari}" con confrontatori "\textit{pari}", per $n$ passaggi.\\
+
+\paragraph{Correttezza:} possiamo usare il principio 0/1, mostrando che l'algoritmo è in grado di \textbf{ordinare qualsiasi vettore binario}:
+$$\{0,1\}^n \rightarrow \; \fbox{Odd/Even} \; \rightarrow o^j 1^e  $$
+
+Partendo dal caso peggiore $111100$, $e=4$, $j=2$. Ogni 1 nell'input deve \textbf{scendere} di un \textbf{numero di posizioni} $n-e=j$ (numero di zeri).\\
+
+\textbf{Regola generale}: l'$i$-esimo 1 dal basso, impiega (al più) $n-e+i$ \textbf{passi} per posizionarsi correttamente.\\
+Dato che $i \leq e$ si ottiene: $n-e+e = n$, al più $n$ passi.\\
+
+Per quest'algoritmo $n$ \textbf{passi} sono \textbf{necessari e sufficienti}.
+
+\newpage
+
+Implementazione \textbf{sequenziale}: $T(n,1) = O(n^2)$ (sostanzialmente un BubbleSort).\\
+
+\paragraph{Implementazione parallela:} richiede $n$ round di comparatori implementati con \texttt{MinMax(k,k+1)}. \\
+
+\textbf{Codice}: 
+\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$i = 1$*) to (*$n$*)
+		for (*$k \in \{ 2t - (i \% 2) | 1 \leq t \leq n/2 \} $*) par do
+			MinMax((*$k$*), (*$k+1$*) )
+\end{lstlisting}
+
+La condizione del \texttt{for} fa attivare alternativamente processori pari e dispari.\\
+
+\paragraph{Prestazioni: }
+\begin{itemize}
+	\item \textbf{Tempo}: 
+	$$ t = n \cdot 4 = O(n) $$
+	\item Numero di \textbf{processori}: 
+	$$ p = n $$
+	\item \textbf{Efficienza}: 
+	$$ E = \frac{n \log n}{n \cdot n} \rightarrow 0 $$
+\end{itemize}
+
+\paragraph{Osservazione:} Per $n$ processori in un array lineare l'ordinamento richiede, come \textbf{lower bound}, tempo $\Omega \left(\frac{n}{2 \beta}\right)$, dove $\beta = 1$.\\
+
+\newpage
+
+\subsubsection{Merge-Split}
+
+\textbf{Riduzione} dei \textbf{processori}: Al posto di usarne $n$ ne \textbf{usiamo} $p$.\\
+
+Ogni processore conterrà $n/p$ dati e li \textbf{ordina sequenzialmente} in un \textbf{tempo} 
+$$ t = O\left(\frac{n}{p} \log \frac{n}{p} \right)$$
+
+La \textbf{primitiva} \texttt{MergeSplit} \textbf{sostituisce} il \texttt{MinMax}, avviene tra due \textbf{processori contigui}: 
+\begin{itemize}
+	\item Il processore di sinistra \textbf{spedisce} $n/p$ dati ordinati al processore di destra. Tempo $O(n/p)$.
+	\item Il processore di destra \textbf{riceve e fonde} (Merge) i nuovi $n/p$ dati con i suoi dati (anch'essi ordinati). Tempo $O(n/p)$
+	\item Il processore di destra \textbf{invia} gli $n/p$ dati più piccoli al processore di sinistra (Split). Tempo $O(n/p)$
+\end{itemize}
+
+Ogni primitiva \texttt{MergeSplit} viene \textbf{ripetuta} per $p$ round. Questo è l'algoritmo \texttt{Odd/Even} con MergeSplit al posto di \texttt{MinMax}.\\
+
+\paragraph{Prestazioni: }
+\begin{itemize}
+	\item \textbf{Tempo }
+	$$ T(n,p) = \frac{n}{p} \log \frac{n}{p} + p \cdot \frac{n}{p} = O(n) $$
+	\item Numero di \textbf{processori}: 
+	$$ p(n) = p $$
+	\item \textbf{Efficienza}:
+	$$ E = \frac{n \log n}{p \cdot \left(\frac{n}{p} \log \frac{n}{p} + n\right)} = \frac{n \log n}{ n \log \frac{n}{p} + n \cdot p} $$
+	Scegliendo $p = \log n$
+	$$ E = \frac{n \log n}{n \log n} \rightarrow c \neq 0 $$
+\end{itemize}
+
+\paragraph{Osservazione:} Il \textbf{tempo} è \textbf{rimasto} $O(n)$. La riduzione dei processori agisce sul diametro e non sull'\textbf{ampiezza di bisezione} $\beta = 1$.\\
+
+%Slide 10
+
+%End L17
