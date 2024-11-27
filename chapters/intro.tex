@@ -1,3 +1,4 @@
+% !TeX spellcheck = it_IT
 \section*{Introduzione}
 \addcontentsline{toc}{section}{\protect\numberline{}Introduzione}
 All'interno del corso sarà presente solo la progettazione di algoritmi, non si parla di architetture.\\
@@ -31,8 +32,19 @@ Con la \textbf{memoria condivisa} il sistema si chiama \textbf{PRAM}, l'altro si
 
 Esempio: 
 \begin{center}
-	\includegraphics[width=0.6\columnwidth]{img/somm1}
+	\begin{tikzpicture}
+		\node[circle, draw, label=45:1] (A) at (0,0) {A};
+		\node[circle, draw, label=45:2] (B) at (3,0) {B};
+		\node[circle, draw, label=45:3] (C) at (0,-3) {C};
+		\node[circle, draw, label=45:4] (D) at (3,-3) {D};
+		
+		\draw (A) -- (B) node[midway, above] {$\longrightarrow$};
+		\draw (A) -- (C) node[below] {};
+		\draw (D) -- (B) node[below] {};
+		\draw (C) -- (D) node[midway, above] {$\longrightarrow$};
+	\end{tikzpicture}
 \end{center}
+
 Memoria distribuita, ogni dato è in un processore diverso, i dati sono distribuiti. Generalmente i collegamenti sono full duplex (avanti e indietro, ambo le direzioni).\\
 
 Operazioni: 
@@ -69,7 +81,17 @@ Non si può assumere \textbf{nessun tipo di sincronizzazione gratuita}, devono \
 
 Esempio: 
 \begin{center}
-	\includegraphics[width=0.6\columnwidth]{img/somm1}
+	\begin{tikzpicture}
+		\node[circle, draw, label=45:1] (A) at (0,0) {A};
+		\node[circle, draw, label=45:2] (B) at (3,0) {B};
+		\node[circle, draw, label=45:3] (C) at (0,-3) {C};
+		\node[circle, draw, label=45:4] (D) at (3,-3) {D};
+		
+		\draw (A) -- (B) node[midway, above] {$\longrightarrow$};
+		\draw (A) -- (C) node[below] {};
+		\draw (D) -- (B) node[below] {};
+		\draw (C) -- (D) node[midway, above] {$\longrightarrow$};
+	\end{tikzpicture}
 \end{center}
 
 In questo caso potrebbero esserci \textbf{tempi} più lunghi e che \textbf{variano da collegamento a collegamento}, anche tra scambi diversi sullo stesso collegamento (come può accadere su internet). \\
