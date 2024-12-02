@@ -265,7 +265,8 @@ Quindi il tempo è costante, dato che i processori sono collegati tra loro, altr
 
 \newpage
 
-\subsection{Problema Shuffle}
+\subsection{Problema \texttt{Shuffle}}
+\label{subsec:shuffle}
 
 In \textbf{input} un vettore di lunghezza pari, in \textbf{output} la prima metà dell'input innestata dalla seconda metà.\\
 
@@ -473,6 +474,7 @@ Si può \textbf{generalizzare} a \texttt{MinMax(i,j)}, sfruttando \texttt{Swap(i
 \newpage
 
 \subsection{Problema \texttt{Ordinamento}}
+\label{subsec:ordinamento}
 
 Definizione:
 \begin{itemize}
@@ -480,7 +482,7 @@ Definizione:
 	\item \textbf{Output}: $cont(P_1) < cont(P_2) < \, \dots \, < cont(P_n)$, permutazione ordinata
 \end{itemize} 
 
-Algoritmo \textbf{test/swap oblivious} descritto da una sorting network, chiamata \textbf{\texttt{Odd/Even} sorting network}.\\
+Algoritmo \textbf{test/swap oblivious} descritto da una sorting network, chiamata \textbf{\texttt{Odd-Even} sorting network}.\\
 
 \textbf{Esempio} con 6 elementi: 
 \begin{center}
@@ -565,7 +567,7 @@ Algoritmo \textbf{test/swap oblivious} descritto da una sorting network, chiamat
 Si alternano \textbf{confrontatori} "\textit{dispari}" con confrontatori "\textit{pari}", per $n$ passaggi.\\
 
 \paragraph{Correttezza:} possiamo usare il principio 0/1, mostrando che l'algoritmo è in grado di \textbf{ordinare qualsiasi vettore binario}:
-$$\{0,1\}^n \rightarrow \; \fbox{Odd/Even} \; \rightarrow o^j 1^e  $$
+$$\{0,1\}^n \rightarrow \; \fbox{Odd-Even} \; \rightarrow o^j 1^e  $$
 
 Partendo dal caso peggiore $111100$, $e=4$, $j=2$. Ogni 1 nell'input deve \textbf{scendere} di un \textbf{numero di posizioni} $n-e=j$ (numero di zeri).\\
 
@@ -617,7 +619,7 @@ La \textbf{primitiva} \texttt{MergeSplit} \textbf{sostituisce} il \texttt{MinMax
 	\item Il processore di destra \textbf{invia} gli $n/p$ dati più piccoli al processore di sinistra (Split). Tempo $O(n/p)$
 \end{itemize}
 
-Ogni primitiva \texttt{MergeSplit} viene \textbf{ripetuta} per $p$ round. Questo è l'algoritmo \texttt{Odd/Even} con MergeSplit al posto di \texttt{MinMax}.\\
+Ogni primitiva \texttt{MergeSplit} viene \textbf{ripetuta} per $p$ round. Questo è l'algoritmo \texttt{Odd-Even} con MergeSplit al posto di \texttt{MinMax}.\\
 
 \paragraph{Prestazioni: }
 \begin{itemize}
@@ -636,3 +638,173 @@ Ogni primitiva \texttt{MergeSplit} viene \textbf{ripetuta} per $p$ round. Questo
 %Slide 10
 
 %End L17
+
+\newpage
+
+\subsection{Architettura Mesh}
+
+Per migliorare i valori ottenuti sull'array lineare si può pensare di modificare l'architettura, formando un array bidimensionale, ovvero una griglia di processori (vengono utilizzate per i supercomputer), chiamata \textbf{mesh}.\\
+
+Per $n$ processori abbiamo una \textbf{griglia} $m \times m$, dove $m = \sqrt n$. Ogni processore è collegato a i processori adiacenti, ma anche a quelli sopra e sotto (sai come funziona una griglia dai, ogni nodo è un processore).\\
+
+Se $n$ \textbf{non è un quadrato perfetto}:
+$$\left(\lfloor \sqrt n\rfloor + 1\right)^2 \leq 2n \; \text{ per } \; n \geq 6 $$
+
+Tutte le considerazioni per valutare il numero di processori rimangono uguali anche se $n$ non è un quadrato perfetto. Da $n$ processori, per ottenere una mesh che lavora su un quadrato perfetto mi servono al massimo $2n$ processori, quindi sempre \textbf{lineare in} $n$.\\
+
+\paragraph{Parametri di rete:}
+\begin{itemize}
+	\item \textbf{Grado} $\gamma = 4$, un qualunque processore nella griglia può essere legato a destra, sinistra, sopra e sotto.\\
+	
+	\item \textbf{Diametro} $\delta \sim 2\sqrt{n}$, i processori più distanti sono agli estremi in diagonale, dobbiamo fare una "scala" da uno all'altro.\\
+	
+	\item \textbf{Ampiezza di bisezione} $\beta \sim \sqrt{n}$
+\end{itemize}
+I parametri sono diversi, ma sostanzialmente è la stessa cosa ma su un quadrato al posto che una linea.\\
+
+
+\textbf{Lower bound} per: 
+\begin{itemize}
+	\item \texttt{Max}: $\Omega (\sqrt{n})$, guardando $\delta$
+	\item \texttt{Ordinamento}: $\Omega (\sqrt{n})$, guardando $\beta$
+\end{itemize}
+
+\newpage
+
+\subsubsection{\texttt{Max}}
+Per trovare il massimo potremmo \textbf{usare la mesh come fosse un array lineare}, andando da sinistra verso destra, scendere per poi andare da destra verso sinistra e ripetere, usando lo stesso algoritmo usato per l'array lineare (la mesh diventa un array "piegato", come una serpentina). Ma questo richiede $\Omega (n)$ \textbf{passi}, lontano dal lower bound di $\Omega (\sqrt{n})$.\\
+
+\paragraph{Algoritmo righe-colonna:} Ogni \textbf{riga} è un \textbf{array} lineare di $\sqrt{n}$ \textbf{processori} e l'\textbf{ultima colonna} è anch'essa un array di $\sqrt{n}$ processori. Quindi calcolo il massimo su ogni riga, spostando il valore nell'ultima cella, e poi calcolo il massimo sulla colonna finale.\\
+
+\textbf{Codice}: 
+\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$i=1$*) to (*$\sqrt n$*) par do
+		Max((*$p_{i1}, \, \dots \, , p_{im}$*))
+	Max((*$p_{1m}, \, \dots \, , p_{mm}$*))
+\end{lstlisting}
+
+Il \texttt{for} richiede $\sqrt{n}$ \textbf{passi}, l'ultimo max ne richiede altrettanti, quindi in \textbf{totale} si ottiene che $= O (\sqrt{n})$.\\
+
+Ma l'efficienza: 
+$$ 
+E = \frac{n}{n \cdot \sqrt{n}} \rightarrow 0
+$$
+Uso $n$ processori per $\sqrt{n}$ passi, al posto che solo $n$ passi sequenziali.\\
+
+%End VL 17
+
+\newpage
+
+\paragraph{Riduzione dei processori:} Da $n$ a $p$.\\
+
+\begin{itemize}
+	\item Ogni processore calcola il \texttt{Max} tra $n/p$ dati (sequenzialmente), tempo $O(n/p)$.\\
+	
+	\item Si usa l'algoritmo di prima sulla griglia di $\sqrt{p} \times \sqrt{p}$ processori, tempo $O(\sqrt{p})$.\\
+\end{itemize}
+
+Quindi in \textbf{totale} il tempo: 
+$$ t = \frac{n}{p} + \sqrt{p} $$
+
+Quindi l'\textbf{efficienza}: 
+$$ E = \frac{n}{p\left(\frac{n}{p} + \sqrt{p}\right)} = \frac{n}{n + p^{\frac{3}{2}}}$$
+
+Per farla a tendere a un valore $\neq0$ vorremmo qualcosa della forma $n/n$, quindi \textbf{scelgo}:
+$$ p^{\frac{3}{2}} = n \implies p = n^{\frac{2}{3}} $$
+
+Il \textbf{tempo totale}: 
+$$ t = \frac{n}{p} + \sqrt{p} = \sqrt[3]{n} + \sqrt[3]{n} = O (\sqrt[3]{n}) $$
+
+Così l'\textbf{efficienza tende a una costante}.\\
+
+Il \textbf{lower bound} va \textbf{ricalcolato}, in quanto è cambiata la dimensione della mesh: $\sqrt{p} \times \sqrt{p}$ ha come lower bound $\Omega (\sqrt{p})$ per il \texttt{Max}, ma con $p = n^{\frac{2}{3}}$:
+$$ \Omega (\sqrt{p}) \implies \Omega (\sqrt[3]{n}) $$
+
+Quindi questo algoritmo risulta ottimale, vicino al limite inferiore.\\
+
+\newpage
+
+\subsubsection{\texttt{Ordinamento}}
+
+Su $n$ processori il lato della mesh è $\sqrt{n}$. Una matrice $M$ di lato $m$. \\
+
+L'\textbf{input} è distribuito in una serpentina, da sinistra a destra nelle righe dispari, da destra a sinistra per le righe pari, un dato per processore.\\
+L'\textbf{output} sono gli $n$ valori ordinati in ordine crescente quando letto nella stessa maniera dell'input.\\
+
+\paragraph{Ordinamento LS3:} Si tratta di un algoritmo ricorsivo \textit{divide et impera}. Prende come input il "quadrato" di dati.\\
+
+\textbf{Fasi}: 
+\begin{itemize}
+	\item \textbf{Dividi:} Si divide il quadrato $M$ di dimensione $\sqrt{n} \times \sqrt{n}$ in 4 parti $M_1, M_2, M_3, M_4$, ognuna di dimensione $\sqrt{n}/2 \times \sqrt{n}/2$.\\
+	
+	\item \textbf{Ordina:} Con le chiamate ricorsive viene ordinata ognuna delle parti.\\
+	
+	\item \textbf{Fondi:} Vengono riunite le sotto-matrici
+\end{itemize}
+
+\textbf{Codice}: 
+
+\begin{lstlisting}[escapeinside={(*}{*)}]
+	if (|M| == 1)
+		return M
+	else 
+		LS3Sort(M(*$_1$*)) //In parallelo
+		LS3Sort(M(*$_2$*))
+		LS3Sort(M(*$_3$*))
+		LS3Sort(M(*$_4$*))
+		
+		LS3Merge(M(*$_1$*), M(*$_2$*), M(*$_3$*), M(*$_4$*))
+\end{lstlisting}
+
+Quindi \texttt{LS3Merge} si occupa di in una sola le 4 matrici ordinate. Come viene costruita? Riunisce la matrice "in place" ed effettua due routine, \texttt{Shuffle} (per la descrizione vedi \hyperref[subsec:shuffle]{\texttt{il capitolo relativo}}) e \texttt{Odd-Even} (vedi \hyperref[subsec:ordinamento]{\texttt{capitolo relativo}}).\\
+
+\newpage
+
+In \texttt{LS3Merge} dopo che vengono riunite le matrici, lo \texttt{Shuffle} viene effettuato su \textbf{ogni riga della matrice}, come se fosse un array lineare.\\
+
+In seguito effettua l'ordinamento \texttt{Odd-Even} su due \textbf{colonne adiacenti}, viste come fossero un array lineare lungo $2 \sqrt{n}$, considerandole come connesse a serpentina.\\
+
+\textbf{Codice} per \texttt{LS3Merge}:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+	for (*$i=1$*) to (*$\sqrt{n}$*) par do
+		Shuffle(i)
+	for (*$i=1$*) to (*$\sqrt{n}/2$*) par do
+		Odd-Even((*$2i-1$*), (*$2i$*))
+	Esegui i primi (*$2 \sqrt n$*) passi di Odd-Even 
+		sull'intera mesh (a serpente)
+\end{lstlisting}
+
+Quindi fa lo \texttt{Shuffle} di tutte le colonne (in parallelo), poi fa \texttt{Odd-Even} di tutte le colonne adiacenti. L'ultimo passo è eseguire \texttt{Odd-Even} per $2\sqrt{n}$ passi sull'intera mesh (a serpente).\\
+
+Sostanzialmente, abbiamo le 4 sotto-matrici ordinate, \texttt{Shuffle} e \texttt{Odd-Even} "spingono" tutti i valori più grandi verso il basso, la parte finale di \texttt{Odd-Even} corregge i possibili sbagli, che per forza di cose devono trovarsi tra i primi $2 \sqrt{n}$ elementi.\\
+
+\textbf{Tempo} per \texttt{LS3Merge}: sia \texttt{Shuffle} che \texttt{Odd-Even} hanno \textbf{tempo lineare}, quindi $O (\sqrt{n})$, in totale il merge richiede un certo numero di volte $\sqrt{n}$, che chiameremo $h \sqrt{n}$.\\
+
+\newpage
+
+\paragraph{Tempo totale per LS3:} Richiede di dividere l'input in 4, poi tempo di \texttt{LS3Merge}. Risolviamo: 
+$$ T(n) = \begin{cases}
+	1 & \text{ se } n= 1\\
+	T\left(\frac{n}{4}\right) + h \sqrt{n} & \text{ altrimenti } \\
+\end{cases}$$
+$$ T(n) = T\left(\frac{n}{4}\right) + h \sqrt{n} = \sum_{i=0}^{\log_4 (n-1)} h \sqrt{\frac{n}{4^i}} + 1 = 2 h \sqrt{n} \left(1 - \frac{1}{\sqrt{n}}\right) + 1 = O (\sqrt{n}) $$
+Possiamo vedere che la ricorsione si ferma a $n=4$ e che la sommatoria corrisponde alla serie geometrica.\\
+
+Eseguendo l'algoritmo sequenzialmente, quindi inserendo un 4 prima di $T(n/4)$, dall'equazione di ricorrenza risulterà $O(n\sqrt{n})$, quindi un tempo non ottimale per il sequenziale.\\
+
+\nn
+
+\paragraph{Prestazioni:}
+\begin{itemize}
+	\item \textbf{Tempo}:
+	$$ T(n) = O (\sqrt{n})$$
+	(minimo teorico)
+	\item \textbf{Processori}: 
+	$$ p(n) = n $$
+	\item \textbf{Efficienza}:
+	$$ E = \frac{n \log n}{n \sqrt{n}} \rightarrow 0 $$
+	Ma si può migliorare riducendo i processori tramite una versione del \texttt{BitonicSort} su mesh che ha processori $p(n) = O(\log^2 n)$ e tempo $T(n) = O(n / \log n)$, quindi efficiente, anche se peggiore in termini di tempo.\\
+\end{itemize}
+
+%End L18 
+%Fine Parallelo?
