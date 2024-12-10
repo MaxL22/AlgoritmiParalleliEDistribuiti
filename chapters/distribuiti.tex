@@ -136,3 +136,283 @@ Oltre agli assiomi possiamo avere delle \textbf{restrizioni sulla rete}, da dich
 
 %Slide 11
 %End L19
+
+\subsection{Misure di Complessità}
+
+\paragraph{Tempo:} Viene considerato l'\textbf{intervallo} tra la \textbf{prima entità che si attiva} e l'\textbf{ultima che termina}. Esecuzioni diverse dello stesso codice può portare a tempi diversi in base alla congestione della rete.\\
+
+Questo problema si risolve considerando il \textbf{tempo ideale}, si misura il tempo supponendo comunicazioni unitarie e clock sincroni.\\
+
+Il tempo ideale si contrappone al \textbf{tempo causale} (caso peggiore), ovvero il tempo misurato considerando la catena più lunga di comunicazione richiesta dal codice; il peggiore di tutte le situazione che possono accadere.\\
+
+\paragraph{Quantità di Comunicazione:} Si misura in termini di \textbf{numero di messaggi spediti}, se i messaggi sono omogenei/della stessa dimensione, altrimenti si valuta il \textbf{numero di bit spediti}.\\
+
+\newpage
+
+\subsection{Definizione di un Problema}
+
+In genere un \textbf{problema} viene definito da una \textbf{tripla}: 
+$$ P = <P_{init}, P_{final}, R> $$
+Dove: 
+\begin{itemize}
+	\item $P_{init}$ e $P_{final}$ sono dei \textbf{predicati logici} che descrivono le \textbf{configurazioni del sistema all'inizio} (come sono inizializzati i registri all'interno delle entità all'inizio del protocollo) \textbf{e alla fine} (come devono essere i registri al termine).\\
+	
+	\item $R$ rappresenta le restrizioni del sistema, ad esempio full-duplex, no-errori, \dots\\
+\end{itemize}
+
+\textbf{Esempio di definizione} $P$ per \texttt{Broadcast}:
+\begin{itemize}
+	\item $P_{init}$: una sola entità detiene l'informazione $I$ e le altre identità non la hanno, i.e., 
+	$$ \exists x \in E \; \text{ t.c. }\; valore(x) = I \; \wedge \; \forall x \neq y \;\; valore (y) = \emptyset $$
+	
+	\item $P_{final}$: tutte le entità posseggono $I$
+	$$ \forall x \in E \;\;\; valore(x) = I $$
+	
+	\item $R$: link bidirezionali BL, totale affidabilità TR, connettività CN; queste 3 restrizioni si indicano con la sigla R; l'ultima restrizione è unico iniziatore UI; queste 4 restrizioni assieme si indicano con RI
+\end{itemize}
+
+\newpage
+
+\subsection{Protocollo}
+
+Un algoritmo distribuito, o \textbf{protocollo}, è un \textbf{insieme di regole della forma}: 
+\begin{center}
+	stato $\times$ evento $\rightarrow$ azione
+\end{center}
+Lo stato$_t (x)$ è lo stato dell'entità $x$ al tempo $t$. \\
+L'evento può essere l'impulso spontaneo, la sveglia o la ricezione di un messaggio. \\
+L'azione è un mini programma indivisibile che l'entità deve eseguire alla ricezione di un evento.\\
+
+L'\textbf{esecuzione di un protocollo} è una \textbf{sequenza di configurazioni successive del sistema} (l'esecuzione porta a cambiamenti).\\
+
+\paragraph{Definizione di configurazione:} Gli elementi che definiscono una configurazione sono:
+\begin{itemize}
+	\item $\Sigma (t)$: il \textbf{contenuto dei registri} delle entità al tempo $t$
+	\item $Futuro(t)$: \textbf{eventi} già \textbf{generati} al tempo $t$ ma \textbf{non ancora processati} (messaggi inviati non arrivati, sveglie non ancora suonate, \dots)
+\end{itemize}
+
+Indichiamo la \textbf{configurazione del sistema} al tempo $t$ con $C(t)$
+$$ C(t) = (\Sigma(t), Futuro(t))$$
+
+Per esempio, la configurazione iniziale $C(0)$ è data dai registri inizializzati ($\Sigma(0)$) e dall'impulso spontaneo, presente ma non ancora processato ($Futuro(0)$).\\
+
+L'\textbf{esecuzione del protocollo} distribuito viene descritta da una \textbf{sequenza di configurazioni successive}, tale che
+$$ C(0) \xrightarrow{\text{ protocollo }} C(f)$$
+Va dallo stato iniziale $C(0)$ allo stato finale $C(f)$.\\
+
+\newpage
+
+\paragraph{Notazione:} Quando una \textbf{configurazione} $C$ \textbf{soddisfa un predicato} $P$ scriveremo $C \in P$.\\
+
+Bisogna \textbf{definire} come un protocollo distribuito \textbf{risolva un problema}.\\
+
+\subsubsection{\texttt{Broadcast}}
+
+\paragraph{Prima versione:} Riprendendo l'\textbf{esempio} del \texttt{Broadcast}: 
+\begin{itemize}
+	\item $P_{init}$: $\exists x \in E$ t.c. $valore (x) = I$ $\wedge$ $\forall y \neq x$ $valore (y) = \emptyset$
+	\item $P_{final}$: $\forall x \in E$ $valore (x) = I$
+	\item $R = $ RI $=$ (BL, TR, CN, UI)
+\end{itemize}
+Definendo due stati: 
+$$ S = \{iniziatore, inattivo\} $$
+E indichiamo con:
+\begin{itemize}
+	\item $S_{init}$ gli stati delle entità nella configurazione iniziale $C(0)$
+	\item $S_{term}$ gli stati delle entità nella configurazione finale $C(f)$
+\end{itemize}
+Quindi, al termine vogliamo che tutte le entità siano sullo stato $inattivo$.\\
+
+Le regole vengono specificate con stato, evento e azione, in quest'ordine, quindi: 
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Iniziatore: 
+	impulso spontaneo
+	{	
+		send(M) to N((*$x$*))
+		become inattivo
+	}
+	
+Inattivo: 
+	ricezione(M)
+	{	
+		processa(M)
+		send(M) to N((*$x$*))
+	}
+\end{lstlisting}
+
+L'iniziatore manda a tutti i suoi vicini il dato, per poi diventare inattivo, mentre tutte le altre entità, alla ricezione del dato, lo inoltrano ai vicini.\\
+
+Quindi possiamo ipotizzare che il messaggio $M$ sia una quadrupla: 
+$$ M = (t, o, d, I)$$
+Con: 
+\begin{itemize}
+	\item $t$: tipologia del messaggio
+	\item $o$ e $d$: origine e destinazione
+	\item $I$: informazione
+\end{itemize}
+
+%End VL 19
+
+Ma c'è un problema: il protocollo è \textbf{corretto} (diffonde l'informazione tra tutte le entità) ma \textbf{non termina}. \\
+
+Bisogna evitare di inviare il messaggio anche all'entità dalla quale è stato ricevuto. Inoltre, un'entità viene attivata anche se è già stata attivata in precedenza, formando cicli.\\
+
+$Futuro(t) \neq \emptyset$, non c'è un momento senza messaggi in transito, quindi la comunicazione non termina.\\
+
+La soluzione al problema è stabilire più stati, \textbf{raffinando gli stati}:
+\begin{itemize}
+	\item $S_{start} \subseteq S_{init}$: stati che fanno iniziare il protocollo
+	\item $S_{final} \subseteq S_{term}$: stati per cui la \textbf{sola azione è quella nulla} 
+\end{itemize}
+Per \texttt{Broadcast}, $S_{start} = \{iniziatore\}$ mentre $S_{init} = \{iniziatore, inattivo\}$, per gli stati finali ne introduciamo uno nuovo: $S_{term} = S_{final} = \{finito\}$. 3 stati totali.\\
+
+Grazie all'uso dello stato "$finito$" il protocollo riesce a terminare. Dopo essere $inattivo$ un'entità entra nello stato $finito$, non rimane più nello stesso stato.\\
+
+\newpage
+
+\textbf{Formalmente}, possiamo dire che la soluzione per $P$: 
+\begin{itemize}
+	\item è \textbf{corretta} se
+	$$ \forall C(0) \in P_{init} \;\;\; \exists t'  \; \text{ t.c. } \; \forall t > t' \;\; C(t) \in P_{final} $$
+	per ogni condizione iniziale, a un certo punto si arriva a una delle configurazioni finali.\\
+	
+	\item \textbf{Termina} se
+	$$ \forall x \in E \;\;\; stato_t (x) \in S_{final} $$
+	ogni entità presente è in uno stato finale.\\
+\end{itemize}
+
+Devono valere entrambe.
+
+\paragraph{Seconda versione (Flooding):} Gli stati sono
+$$ S = \{iniziatore, inattivo, finito\} $$
+$$ S_{start} = \{iniziatore\} $$
+$$ S_{final} = \{finito\}$$
+L'iniziatore fa partire il protocollo, le entità nello stato finito non eseguono più operazioni.\\
+Codice:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+	Iniziatore: 
+	impulso spontaneo
+	{	
+		send(M) to N((*$x$*))
+		become finito
+	}
+	
+	Inattivo: 
+	ricezione(M)
+	{	
+		processa(M)
+		send(M) to N((*$x$*)) - sender
+		become finito
+	}
+\end{lstlisting}
+Le coppie stato-evento non indicate eseguono azione nulla.\\
+
+\newpage
+
+\paragraph{Complessità:}
+\begin{itemize}
+	\item \textbf{Numero di messaggi} $M$:
+	$$ M[Flooding] = \sum_{x \in E} (N(x) - 1) + 1 = 2m - n + 1$$
+	Dove $m$ è il numero di archi e $n$ il numero di nodi. Fa mandare il messaggio a tutti i vicini, eccetto il sender.\\
+	
+	\item \textbf{Tempo} $T$: 
+	$$ T[Flooding] \leq d $$
+	Dove $d$ è il diametro della rete. Per questo calcolo si suppone clock sincroni e ritardo unitario per la consegna dei messaggi. Il tempo è pari al diametro nel caso peggiore, può essere meno.\\
+\end{itemize}
+
+\textbf{Lower bound} del problema: 
+\begin{itemize}
+	\item \textbf{Tempo causale} (caso peggiore) per il problema
+	$$ T[BCast/RI] \geq d$$
+	Non si possono impiegare meno di $d$ passi.\\
+	
+	\item \textbf{Numero di messaggi}, c'è un teorema che dice
+	$$ M[BCast/RI] \geq m$$
+	Non si può scendere sotto $m$.\\
+\end{itemize}
+
+Flooding è quindi ottimale ($2m$ messaggi, lineare) per il problema di \texttt{Broadcast}.\\
+
+\newpage
+
+\paragraph{Teorema:} $M[BCast/RI] \geq m$.\\
+
+\begin{proof}
+	Per assurdo, risolvo il problema con meno di $m$ messaggi. Vuol dire che esiste un arco su cui non viaggiano messaggi. Sia $A$ il protocollo che non manda il messaggio sull'arco $(x,y)$. Se $A$ è corretto deve lavorare bene su ogni $G$.\\
+	
+	Creo il grafo $G'$ aggiungendo un nodo $z$ tra $x$ e $y$, rimuovendo l'arco $(x,y)$ e aggiungendo $(x,z)$ e $(z,y)$. Cambio le etichettature $\lambda_x (x,z) = \lambda_x (x,y)$ e $\lambda_y(y,z) = \lambda_y (y,z)$.\\
+	
+	\begin{center}
+		\begin{tikzpicture}
+			\node (1) at (-0.3,0) {$x$};
+			\node (2) at (2.3,0) {$y$};
+			
+			\draw[-] (0,0) -- (2,0);
+			\fill (0,0) circle (2pt);
+			\fill (2,0) circle (2pt);
+		\end{tikzpicture}
+		\nn \nn
+		$\Downarrow$
+		\nn \nn
+		\begin{tikzpicture}
+			\node (1) at (-0.3,0) {$x$};
+			\node (2) at (2.3,0) {$y$};
+			\node (2) at (1,-2.3) {$y$};
+			
+			
+			\draw[dashed] (0,0) -- (2,0);
+			\draw[-] (0,0) -- (1,-2);
+			\draw[-] (2,0) -- (1,-2);
+			\fill (0,0) circle (2pt);
+			\fill (2,0) circle (2pt);
+			\fill (1,-2) circle (2pt);
+		\end{tikzpicture}
+	\end{center}
+	
+	Se eseguo il protocollo $A$ su $G'$ il nodo $z$ non riceve $I$, dato che sull'arco $(x,y)$ non viaggiava nessun messaggio questo accade anche su $(x,z)$, quindi $A$ non è corretto.\\
+\end{proof}
+
+\newpage
+
+\subsection{Problema \texttt{Wake-Up}}
+
+Nel problema \texttt{Broadcast}, c'era una singola entità che doveva raggiungere tutte le altre, mentre per \texttt{Wake-up} possono esserci più entità che iniziano il protocollo. Si rilassa il vincolo di unico iniziatore UI. Ci sono entità "dormienti" e altre che sono "sveglie", bisogna svegliarle tutte.\\
+
+\subsubsection{Protocollo WFlood}
+Stati
+$$ S = \{dormiente, attivo\} $$
+$$ S_{init} = \{dormiente\} = S_{start} $$
+$$ S_{term} = \{attivo\} = S_{final} $$
+
+Ora però l'impulso spontaneo può arrivare a un certo numero di entità.\\
+
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Dormiente:
+	impulso spontaneo
+	{
+		send(W) to N(x)
+		become attivo
+	}
+	ricezione(W)
+	{
+		send(w) to N(x) - sender
+		become attivo
+	}
+\end{lstlisting}
+
+Ci può essere l'impulso spontaneo oppure la ricezione di un messaggio per passare allo stato attivo.\\
+
+\newpage
+
+\paragraph{Costo:}
+\begin{itemize}
+	\item \textbf{Tempo}: 
+	$$ T[WFlood] \leq d $$
+	Dove $d$ è il diametro.\\
+	
+	\item \textbf{Numero di messaggi}:
+	$$ 2m - n + 1 \leq M[WFlood] \leq 2m $$
+	Il bound inferiore è se una sola entità si attiva, mentre il $2m$ è il caso in cui si attivano tutte.\\
+\end{itemize}
+
+%End VL 20, End slide 20
