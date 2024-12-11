@@ -416,3 +416,170 @@ Ci può essere l'impulso spontaneo oppure la ricezione di un messaggio per passa
 \end{itemize}
 
 %End VL 20, End slide 20
+
+\newpage
+
+\subsection{Problema \texttt{Traversal}}
+
+Ogni entità della rete deve essere visitata, ma \textbf{sequenzialmente}, ovvero una dopo l'altra.\\
+Risulta utile in ambito di gestione condivisa delle risorse.\\
+
+La configurazione iniziale è che tutti i nodi sono $unvisited$, tranne uno.\\
+
+\subsubsection{\texttt{Depth-First Traversal}}
+
+Il protocollo da definire sarà \texttt{Depth-First Traversal}, equivalente alla visita in profondità di un grafo; si scende sempre verso il vicino non ancora visitato.\\
+
+Idea: viene usato un messaggio particolare \textbf{Token} $T$. Quando un nodo riceve il token $T$ diventa $visited$, ma ad ogni istante di tempo viaggia \textbf{al più un solo} $T$.\\
+
+\textbf{Passaggi} principali dell'algoritmo: 
+\begin{enumerate}
+	\item Un nodo che \textbf{riceve} $T$ per la \textbf{prima volta} deve: 
+	\begin{itemize}
+		\item ricordarsi il sender (non dovrà rinviargli il token)
+		\item fare una \textbf{lista dei vicini non visitati} (ma non lo sa, per ora tutti eccetto il sender)
+		\item invia $T$ ad uno di essi
+		\item aspetta un messaggio da quest'entità, che può essere \texttt{return} o \texttt{back-edge}
+	\end{itemize}
+	\nn
+	
+	\item Il \textbf{vicino che riceve} $T$:
+	\begin{itemize}
+		\item se è il \textbf{primo} $T$ che riceve, va al \textbf{passaggio 1}
+		\item altrimenti, se è \textbf{già stato visitato}, spedisce un \texttt{back-edge}
+	\end{itemize}
+	\nn
+	
+	\item Solo dopo aver \textbf{finito la lista dei vicini non visitati} deve inviare un \texttt{return} al sender.\\
+\end{enumerate}
+
+\newpage
+
+Quindi sono presenti \textbf{3 tipi di messaggi}:
+\begin{itemize}
+	\item \texttt{Token} $T$
+	\item \texttt{Back-edge} $B$
+	\item \texttt{Return} $R$
+\end{itemize} 
+
+\paragraph{Protocollo:} Stati:
+$$ S = \{initiator, idle, visited, done\}$$
+$$ S_{init} = \{initiator, idle\} $$
+$$ S_{term} = \{done\}$$
+
+Codice: 
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Initiator
+	Spontaneously
+	{
+		initiator = true
+		unvisited = N((*$x$*))
+		visit
+	}
+	
+Idle
+	Receive (T)
+	{
+		entry = sender
+		unvisited = N(x) - sender
+		initiator = false
+		visit
+	}
+\end{lstlisting}
+	
+\newpage
+	
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Procedure visit
+{
+	if unvisited (*$\neq \emptyset$*) then 
+		next (*$\leftarrow$*) unvisited
+		send(T) to next
+		become visited
+	else 
+		if initiator = false then 
+			send(return) to entry
+		become done
+}
+
+Visited
+	Receiving(return)
+	{
+		visit
+	}
+	Receiving(back-edge)
+	{
+		visit
+	}
+	Receiving(T)
+	{
+		unvisited = unvisited - sender
+		send(back-edge) to sender
+	}
+\end{lstlisting}
+
+\paragraph{Complessità:} Osservazione: su ogni link deve viaggiare il \texttt{token} ed in risposta ci sarà un \texttt{return} o \texttt{back-edge}. Il tutto avviene praticamente in maniera \textbf{sequenziale}.\\
+
+Quindi il \textbf{tempo coincide con i messaggi}
+$$ T[DF-Traversal] = M[DF-Traversal] = 2m $$
+
+\newpage
+
+\paragraph{Lower bound al problema \texttt{Traversal}:}
+\begin{itemize}
+	\item $M[Traversal] \geq m$, vale lo stesso teorema visto per il Broadcast
+	\item $T[Traversal] \geq n-1$, dato che ogni nodo deve essere visitato in sequenza
+\end{itemize}
+
+
+Nel caso di un grafo connesso, il \textbf{numero di archi} $m$ è
+$$ n-1 \leq m \leq \frac{n(n-1)}{2} = O(n^2)$$
+
+Di conseguenza DF-Traversal:
+\begin{itemize}
+	\item è \textbf{ottimo} per il \textbf{numero di messaggi}
+	\item ma nel caso peggiore \textbf{NON per il tempo} ($n$)
+\end{itemize}
+
+\paragraph{Osservazione:} Il problema per il costo del tempo è che ad ogni istante di tempo \textbf{viaggia un messaggio $T$ solo}.\\
+
+La soluzione è introdurre concorrenza, aggiungendo messaggi in quantità opportuna ($O(m)$).\\
+
+Possiamo evitare di inviare $T$ su un link \texttt{back-edge}? \\
+Idea: un nodo \textbf{non visitato} che \textbf{riceve} $T$ \textbf{comunica} l'evento ai \textbf{vicini} mandando un \textbf{messaggio} \texttt{visited} (in contemporanea con $T$), i vicini che ricevono \texttt{visited} aggiornano la propria lista unvisited.\\
+
+Ma questo risolve il problema di inviare $T$ su \texttt{back-edge}? Non completamente, si può vedere in casi di ritardo della comunicazione, in cui il \texttt{visited} impiega tempo ad arrivare.\\
+
+Ma quando un entità "capisce l'errore" e riceve un \texttt{visited}, spedisce $T$ ad un'altra entità, oppure invia un \texttt{return} e sarà l'entità che lo riceve a spedire un altro $T$.\\
+
+Inoltre, se un nodo riceve $T$: lo interpreta come fosse un \texttt{back-edge} ed elimina il nodo dalla lista di unvisited, in quanto sicuramente è già stato visitato.
+
+\newpage
+
+\paragraph{Nuova complessità:}
+\begin{itemize}
+	\item \textbf{Messaggi}:
+	$$ 
+	\begin{array}{c c}
+		2n-2 & \leftarrow T + R \\
+		2m - (n-1) & \leftarrow visited \\
+		2(m-(n-1)) & \leftarrow \text{errori di invio di } T \\
+		\implies O(m) & \text{totale}
+	\end{array}
+	$$
+	
+	\item \textbf{Tempo}: considerando tempo ideale senza ritardi nè errori. Inoltre i \texttt{visited} son in sovrapposizione con $T$. Totale:
+	$$ 2(n-1) = O(n) $$
+\end{itemize}
+
+Chiamando il protocollo modificato $DF^\ast$, questo è \textbf{ottimo} per
+\begin{itemize}
+	\item Quantità di \textbf{messaggi} $M[DF^\ast] = O(n)$
+	\item \textbf{Tempo} ideale $T[DF^\ast] = O(n)$
+\end{itemize}
+
+In quanto rispetta i lower bound.\\
+
+\vfill
+
+Codice non richiesto all'esame, non lo riporterò, definisce il protocollo $DF^\ast$.\\
