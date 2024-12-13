@@ -1,7 +1,5 @@
 % !TeX spellcheck = it_IT
 
-%Roba nuova, introduci
-
 \section{Algoritmi Distribuiti}
 
 In un ambiente di calcolo distribuito, possiamo pensare alle entità di calcolo come nodi all'interno di un \textbf{grafo direzionato} $\vec G$, dove ogni arco indica un collegamento.\\
@@ -583,3 +581,218 @@ In quanto rispetta i lower bound.\\
 \vfill
 
 Codice non richiesto all'esame, non lo riporterò, definisce il protocollo $DF^\ast$.\\
+
+% End L21
+
+\newpage
+
+\subsection{Problema \texttt{Spanning Tree}}
+
+I problemi \texttt{Broadcast}, \texttt{Wake up} e \texttt{Traversal} hanno una \textbf{complessità di messaggi} che è $\Theta (m)$, dove $m$ è il numero di link e $n$ il numero di entità.\\
+
+Quindi la \textbf{complessità varia} in base alla \textbf{topologia del grafo}
+$$ n-1 \leq m \leq \frac{n(n-1)}{2} $$
+
+$n-1$ è il minimo numero di link per collegare $n$ entità, come in un albero, mentre l'estremo opposto è un grafo completamente connesso.\\
+
+\paragraph{Idea:} Quindi per \textbf{minimizzare} la \textbf{complessità di comunicazione} si potrebbe \textbf{utilizzare una sottorete} al posto dell'intero grafo $G$, e la sottorete minima è quella generata da uno \textbf{spanning tree}. Poi si possono risolvere gli altri problemi sullo spanning tree.\\
+
+Il \textbf{costo} per risolvere i problemi diventa somma di: 
+\begin{itemize}
+	\item \textbf{costo} di \textbf{costruzione} dell'\textbf{albero} 
+	\item \textbf{costo originale} del problema eseguito sull'albero
+\end{itemize}
+
+Ad esempio, il costo di \texttt{Broadcast} con algoritmo Flooding su uno spanning tree di $n$ entità è esattamente $n-1$ messaggi.\\
+
+Problema dello \texttt{Spanning Tree}: vogliamo \textbf{costruire una sottorete} tale che: 
+\begin{itemize}
+	\item coinvolga \textbf{tutte le entità}
+	\item le entità siano \textbf{connesse}
+	\item \textbf{priva di cicli}
+\end{itemize}
+
+Risolvere un algoritmo distribuito sulla sottorete richiede di tenere conto del fatto che l'algoritmo deve essere a \textbf{conoscenza dell'albero su cui viene eseguito}. \textbf{Ogni entità} vedrà (tiene traccia di) una \textbf{piccola parte dell'albero}.\\
+
+\newpage
+
+\paragraph{Notazione:} 
+\begin{itemize}
+	\item $\forall x \in E$ definiamo 
+	$$ Tree\_N(x) \subseteq N(x) $$
+	sottoinsieme che contiene i \textbf{vicini} di $x$ \textbf{all'interno dell'albero}.\\
+	
+	\item L'insieme dei \textbf{lati} per l'albero:
+	$$ (x,y) \in link(Tree\_N(x)) \Leftrightarrow y \in Tree\_N (x) $$
+	quindi un lato $(x,y)$ è all'interno di $link(Tree\_N(x))$ solo se $y \in Tree\_N (x)$.\\
+	
+	\item L'\textbf{intero albero} è
+	$$ Tree = \bigcup_{x \in E} link(Tree\_N(x)) $$
+	ovvero, l'unione di tutti i collegamenti per ogni nodo.\\
+\end{itemize}
+
+Risolviamo il problema \texttt{Spanning Tree} con le \textbf{restrizioni RI} (Bidirectional Link, Total Reliability, Connectivity, Unique Initiator).\\
+
+Il protocollo che risolve il problema dello \texttt{Spanning Tree} si chiama \texttt{Shout}:
+\begin{itemize}
+	\item ogni \textbf{entità vede} solo i suoi $Tree\_N(x)$
+	\item e tiene traccia del \textbf{padre}
+\end{itemize}
+
+La \textbf{radice} dell'albero è data dall'\textbf{entità che inizia} il protocollo.\\
+
+La strategia di \texttt{Shout} è chiedere ai vicini se questi vogliono diventare vicini anche nell'albero.\\
+
+\newpage
+
+\textbf{Schema}: 
+\begin{itemize}
+	\item L'iniziatore $s$ (root) \textbf{spedisce} la \textbf{domanda} $Q$ ai suoi \textbf{vicini} e attende le risposte (chiede se vogliono diventare figli).\\
+	
+	\item Ogni entità $x \neq s$ che \textbf{riceve} $Q$:
+	\begin{itemize}
+		\item la \textbf{prima volta} risponde "\textit{yes}" (viene connessa all'albero) e \textbf{invia} $Q$ ai suoi vicini e si mette in attesa
+		\item le \textbf{volte successive} risponde "\textit{no}" (già connessa)
+	\end{itemize}
+	\nn
+	
+	\item Inoltre serve \textbf{memorizzare l'entità padre} e le \textbf{entità che rispondono} "\textit{yes}".\\
+	
+	\item L'entità \textbf{termina quando riceve tutte le risposte}.\\
+\end{itemize}
+
+\texttt{Shout} è sostanzialmente un Flooding $+$ Reply. Si diffonde un messaggio $Q$ a cui bisogna rispondere "\textit{yes}" o "\textit{no}".\\
+
+\textbf{Linee guida} per definire il codice:
+\begin{itemize}
+	\item Tre \textbf{tipi di messaggi}: $Q$, $yes$, $no$.\\
+	
+	\item Ogni entità ha la \textbf{visibilità locale del proprio} albero, quindi bisogna \textbf{aggiornare le variabili locali}: $root$ (bool per indicare se è la radice), $parent$ (tiene traccia del padre, uno dei nodi all'interno della lista), $Tree\_N(x)$ (lista di vicini di albero), $counter$ (conta il numero di risposte ricevute a $Q$, permette di terminare correttamente).\\
+	
+	\item \textbf{Aggiornare lo stato}, vanno utilizzati in maniera corretta per raggiungere la terminazione.\\
+\end{itemize}
+
+\newpage
+
+\subsubsection{Protocollo \texttt{Shout}}
+Gli \textbf{stati} sono:
+$$ S = \{iniziatore, inattivo, attivo, finito \} $$
+$$ S_{init} = \{iniziatore, inattivo \} $$
+$$ S_{final} = \{finito\} $$
+
+Nella configurazione iniziale ci sarà un solo $iniziatore$ e tutte le altre entità $inattive$, che diventeranno $attive$ quando ricevono il primo $Q$, e ci rimarranno fino al momento in cui a loro volta non riceveranno tutte le risposte, diventando $finite$.\\
+
+Bisogna definire le azioni per $iniziatore$, $inattivo$, $finito$.\\
+
+Per quanto riguarda l'iniziatore:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Iniziatore
+	Impulso spontaneo
+	{
+		root = true
+		counter = 0 
+		Tree_N((*$x$*)) = (*$\emptyset$*)
+		send(Q) to N((*$x$*))
+		become attiv
+	}
+\end{lstlisting}
+
+\newpage
+
+Ogni inattivo:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Inattivo 
+	Ricezione(Q)
+	{
+		root = false
+		parent = sender 
+		counter = 1
+		Tree_N((*$x$*)) = {sender}
+		send("yes") to sender
+		if counter = |N((*$x$*))| then 
+			become finito
+		else 
+		{
+			send(Q) to N(x)\sender
+			become attivo
+		}
+	}
+\end{lstlisting}
+
+Ogni attivo:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Attivo
+	Ricezione(Q)
+	{ send("no") to sender }
+	Ricezione("yes")
+	{
+		Tree_N((*$x$*)) = Tree_N((*$x$*)) (*$\cup$*) {sender}
+		counter = counter + 1
+		if counter = |N((*$x$*))| then 
+			become finito
+	}
+	Ricezione("no")
+	{
+		counter = counter + 1
+		if counter = |N((*$x$*))| then 
+			become finito
+	}
+\end{lstlisting}
+
+\newpage
+
+\paragraph{Correttezza di \texttt{Shout}:}
+\begin{itemize}
+	\item \textbf{Terminazione:} in assenza di errori, viene sempre ricevuto un numero di risposte pari ai $Q$ inviati, diventando finito.\\
+	
+	\item \textbf{Tutte le entità presenti:} grazie al Flooding di $Q$.\\
+	
+	\item \textbf{Le entità sono connesse:} grazie al fatto che al primo $Q$ rispondo "$yes$".\\
+	
+	\item \textbf{Privo ci cicli:} ogni entità risponde solo una volta con "$yes$" (tranne la radice, che risponde sempre "$no$")
+\end{itemize}
+
+\paragraph{Costo:}
+\begin{itemize}
+	\item \textbf{Numero di messaggi}: 
+	$$ M[Shout] = 2M[Flooding] = 2[2m - (n-1)] \sim 4m $$
+	
+	\item \textbf{Tempo:}
+	$$ T[Shout] = T[Flooding] + 1 \leq d + 1 $$
+\end{itemize}
+
+I \textbf{lower bound} per questo problema SPT sono: 
+$$ M[SPT/RI] \geq m $$
+$$ T[SPT/RI] \geq d $$
+Quindi abbiamo un protocollo \textbf{ottimale} $O(m)$ per i messaggi e $d+1$ per il tempo.\\
+
+\newpage
+
+\subsubsection{\texttt{Shout} migliorato: \texttt{Shout+}}
+
+Per quanto riguarda il tempo non si può migliorare, ma posso \textbf{ridurre il numero di messaggi} (abbiamo un 4 come coefficiente)? I messaggi
+\begin{itemize}
+	\item di "$yes$" sono necessari
+	\item di "$no$" possono essere eliminati
+\end{itemize}
+
+Se la risposta è un "$no$" è perché l'entità ha già ricevuto in precedenza un $Q$ a cui ha risposto "$yes$", inviando contestualmente altri $Q$.\\
+
+Quindi una entità attiva che \textbf{riceve un} messaggio $Q$ può \textbf{interpretare} quest'ultimo \textbf{come un} "$no$".\\
+
+Questo rimuove la necessità di rispondere "$no$", su ogni arco viaggerà una richiesta $Q$ e una risposta, la quale può essere "$yes$" oppure un altro $Q$.\\
+
+\paragraph{Nuovo costo di comunicazione:}
+$$ M[Shout+] = 2m $$ 
+
+Su \textbf{ogni link} viaggiano: 
+\begin{itemize}
+	\item o un $Q$ seguito da $yes$
+	\item o un $Q$ seguito da un $Q$
+\end{itemize}
+
+\vfill 
+
+\paragraph{Altra soluzione per lo spanning tree:} Utilizzare il protocollo \texttt{Traversal}. Un arco fa parte dell'albero se su quel link passa un \texttt{return}, si costruisce l'albero in maniera sequenziale (tendenzialmente peggio di \texttt{Shout} che lo fa in parallelo).\\
+
+% End L22
