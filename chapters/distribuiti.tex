@@ -796,3 +796,204 @@ Su \textbf{ogni link} viaggiano:
 \paragraph{Altra soluzione per lo spanning tree:} Utilizzare il protocollo \texttt{Traversal}. Un arco fa parte dell'albero se su quel link passa un \texttt{return}, si costruisce l'albero in maniera sequenziale (tendenzialmente peggio di \texttt{Shout} che lo fa in parallelo).\\
 
 % End L22
+
+\newpage
+
+\subsection{Problema \texttt{Election}}
+
+"Rompere la simmetria", lo scopo è \textbf{individuare un'entità specifica} tra tante entità autonome e omogenee. Tale entità sarà chiamata \texttt{leader}, le altre \texttt{follower}. Bisogna fare una scelta.\\
+Per certe applicazioni serve avere un'unità centrale che diventi coordinatrice per altre entità.\\
+
+Se le entità sono \textbf{omogenee} la scelta del leader diventa \textbf{difficile}.\\
+
+\paragraph{Fact:} Impossibile \textbf{individuare deterministicamente} un leader sotto le restrizioni R (ovvero entità omogenee e unico initiator).\\
+
+Idea della dimostrazione: Siano $x,y \in E$ entità omogenee. Esse sono nello \textbf{stesso stato} e \textbf{inizializzate nello stesso modo}. Eseguono lo stesso algoritmo e di conseguenza lo stesso codice. Partono in simmetria, eseguono lo stesso codice e \textbf{rimarranno sempre simmetriche}.\\
+
+Quindi sotto le restrizioni RI: la starting entity diventa immediatamente leader.\\
+Ma questa è una soluzione che "viene dall'esterno", ma vogliamo che il leader sia scelto dalle entità stessse.\\
+
+\subsubsection{Initial Distinct Values ID}
+
+Introduciamo una \textbf{nuova restrizione}: \textbf{Initial Distinct Values (ID)}. Forniamo un \textbf{nome ad ogni entità}, $id(x) =$ nome di $x \in E$, o valore di $x$.\\
+
+Notazione: $R \cup \{ID\} = IR$.\\
+
+\newpage
+
+\paragraph{Strategie di soluzione:}
+\begin{enumerate}
+	\item \textbf{Elect minimum} 
+	\begin{itemize}
+		\item si trova l'entità con $id(x)$ minimo che diventerà \texttt{leader}
+		\item tutte le altre, $\forall y \neq x \in E$ , diventano \texttt{follower}
+	\end{itemize}
+	\nn
+	
+	\item \textbf{Elect minimum initiator}
+	\begin{itemize}
+		\item trova $id(x)$ minimo tra le sole entità \texttt{initiator} ed elegge a \texttt{leader}
+		\item $\forall y \neq x \in E$, $y$ diventa \texttt{follower} (tutte le altre)
+	\end{itemize}
+\end{enumerate} 
+
+
+\paragraph{Topologia di rete:} Risolviamo il problema in una topologia particolare: \textbf{Ring-Anello}.\\
+Le entità sono disposte ad anello, nel caso $m=n$
+$$ A = (x_0, x_1, \, \dots \, , x_{n-1}) $$
+\begin{center}
+	\begin{tikzpicture}[scale=0.8]
+		\node[circle, draw, minimum width=1cm, minimum height=1cm, inner sep=0] (1) at (0,0) {$x_0$};
+		\node[circle, draw, minimum width=1cm, minimum height=1cm, inner sep=0] (2) at (3,-2) {$x_1$};
+		\node[circle, draw, minimum width=1cm, minimum height=1cm, inner sep=0] (3) at (-3,-2) {$x_{n-1}$};
+		\node (4) at (-2.75, -3.5) {};
+		\node (5) at (2.75, -3.5) {};
+		
+		% Draw bent arrows 
+		\draw[-, bend left=30] (1) to (2);
+		\draw[-, bend right=30] (1) to (3);
+		
+		\draw[dashed, bend right=10] (3) to (4);
+		\draw[dashed, bend left=10] (2) to (5);
+	\end{tikzpicture}
+\end{center}
+
+Ogni entità è \textbf{collegata} a quella \textbf{precedente} e quella \textbf{successiva}, dove $x_0$ è la successiva di $x_{n-1}$ e viceversa.\\
+
+\paragraph{Restrizioni:} $IR \cup \{x \in A$ sa di essere in un anello$\}$.\\
+
+\paragraph{Notazione:} $N(x) -$ \texttt{sender} è detto \texttt{other} (sono solo 2, se non è il \texttt{sender} è l'altro).\\
+
+\newpage
+
+% Cambia notazione messaggi E/insieme E
+\subsubsection{Protocollo All The Way}
+
+I messaggi viaggiano intorno all'anello, inoltrati dalle entità sempre nella stessa direzione.\\
+
+\textbf{Formato} dei messaggi: 
+$$(Elect, id(x), \, \dots)$$
+
+Supponendo di avere $x,y,z$ collegate in quest'ordine. Quando $x$ riceve il messaggio $M$:
+\begin{itemize}
+	\item inoltra $M$ 
+	\item invia un messaggio $M' = (Elect, id(x), \, \dots)$ verso \texttt{other}, con il proprio id
+\end{itemize}
+
+In questo modo \textbf{ogni entità} $x \in E$ \textbf{vede gli id di tutte le altre entità}, $id(y)$, $\forall y \neq x \in E$, e può calcolare il minimo. Sull'anello viaggia ogni id.\\
+
+\textbf{Quando far terminare una entità?} Una volta che $x$ \textbf{riceve} un \textbf{messaggio} contenente \textbf{il proprio id} il messaggio ha fatto il giro dell'anello, quind non lo inoltra più.\\
+
+Può $x$ terminare? 
+\begin{itemize}
+	\item \textbf{sì:} solo se si suppone la restrizione "Message ordering", ovvero che i messaggi vengono prelevati con politica FIFO, ma noi non abbiamo questa restrizione.\\
+	
+	\item \textbf{solo se ha già visto $n$ messaggi:} si suppone che le entità siano a conoscenza della dimensione dell'anello, altra restrizione che non abbiamo.\\
+	
+	\item \textbf{no:} bisogna completare l'ultimo campo del messaggio $M$ (quello con i puntini) per far terminare correttamente le entità.\\
+\end{itemize}
+
+\newpage
+
+Aggiungiamo un \textbf{contatore}: 
+$$ M = (Elect, id(x), counter) $$
+
+Ma \textbf{come usarlo}? 
+\begin{itemize}
+	\item inizialmente l'entità $x$ pone \texttt{counter} $=1$
+	\item ogni altra entità $y \neq x \in E$ somma 1 a \texttt{counter}
+	\item quando $M$ torna ad $x$ \texttt{counter} deve essere pari a $n = |A|$, ovvero la \textbf{dimensione dell'anello}
+\end{itemize}
+
+Quindi se $x$ ha già \textbf{ricevuto} $n$ \textbf{diversi id può terminare}, altrimenti \textbf{aspetta di ricevere $n$ id diversi}.\\
+
+Gli \textbf{stati} sono:
+$$ S = \{asleep, awake, leader, follower\}$$
+$$ S_{init} = \{asleep\} $$
+$$ S_{final} = \{leader, follower\}$$
+
+All'inizio ogni nodo è:
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Asleep
+	Spontaneously
+	{
+		Initialize 
+		become awake
+	}
+	Receving(Elect, value, counter)
+	{
+		send(Elect, value, counter+1)
+		min=Min(min, value)
+		count=count+1
+		become awake
+	}
+\end{lstlisting}
+
+\newpage
+
+Procedura \texttt{Initialize}
+\begin{lstlisting}[escapeinside={(*}{*)}]
+Procedure Initialize
+	{
+		count=0
+		size=1
+		know=false
+		send(Elect, id((*$x$*)), size) to right
+		min=id((*$x$*))
+	}
+	
+Awake
+	Receiving(Elect, value, counter)
+	{
+		if value!=id then
+		{
+			send(Elect, value, counter+1) to other
+			min=Min(min, value)
+			count=count+1
+			if know=true then Check
+		} else
+		{
+			size=counter
+			know=true
+			Check
+		}
+	}
+	
+Procedure Check
+	{
+		if count=size then
+		{
+			if min=id((*$x$*)) then 
+				become leader
+			else
+				become follower
+		}
+	}
+\end{lstlisting}
+
+\newpage
+
+\paragraph{Complessità: }
+\begin{itemize}
+	\item \textbf{Numero di messaggi:} 
+	$$ M[AllTheWay/RI \cup Ring] = n^2$$
+	ogni entità invia/inoltra $n$ messaggi.\\
+\end{itemize}
+
+Ma questo è \textbf{troppo costoso}, quindi passiamo alla strategia \textbf{Elect Minimum Initiator}: solo gli \texttt{initiator} \textbf{generano} $M$, tutti gli altri inoltrano e basta.\\
+
+\textbf{Problema di terminazione}: per le \textbf{entità non} \texttt{initiator}, non vengono a conoscenza di $n$ non ricevendo il proprio messaggio. \\
+Quando è terminato il calcolo del leader da parte degli \texttt{initiator}, il \textbf{\texttt{leader} deve mandare un messaggio di fine} agli altri: si aggiungono \textbf{$n$ messaggi di fine}.\\
+
+\paragraph{Nuova Complessità:}
+\begin{itemize}
+	\item \textbf{Numero di messaggi:}
+	$$ M[AllTheWay - MinInitiator] = n \cdot k + n $$
+	dove $k$ è il numero degli \texttt{initiator}. Ogni messaggio fa il giro dell'anello, più i messaggi di fine.\\
+	
+	\item \textbf{Tempo:}
+	$$ T[AllTheWay - MinInitiator] \leq 3n - 1 $$
+	ed il bound è raggiungibile con $2$ \texttt{initiator} che si svegliano in momenti diversi. Ci sono $n$ messaggi ed $n$ passaggi per ognuno dei 2 \texttt{initiator}, poi $n-1$ messaggi di fine inviati dal \texttt{leader}.\\
+\end{itemize}
+
+%End L23
