@@ -866,8 +866,7 @@ Ogni entità è \textbf{collegata} a quella \textbf{precedente} e quella \textbf
 
 \newpage
 
-% Cambia notazione messaggi E/insieme E
-\subsubsection{Protocollo All The Way}
+\subsubsection{Protocollo \texttt{All The Way}}
 
 I messaggi viaggiano intorno all'anello, inoltrati dalle entità sempre nella stessa direzione.\\
 
@@ -882,7 +881,7 @@ Supponendo di avere $x,y,z$ collegate in quest'ordine. Quando $x$ riceve il mess
 
 In questo modo \textbf{ogni entità} $x \in E$ \textbf{vede gli id di tutte le altre entità}, $id(y)$, $\forall y \neq x \in E$, e può calcolare il minimo. Sull'anello viaggia ogni id.\\
 
-\textbf{Quando far terminare una entità?} Una volta che $x$ \textbf{riceve} un \textbf{messaggio} contenente \textbf{il proprio id} il messaggio ha fatto il giro dell'anello, quind non lo inoltra più.\\
+\textbf{Quando far terminare una entità?} Una volta che $x$ \textbf{riceve} un \textbf{messaggio} contenente \textbf{il proprio id} il messaggio ha fatto il giro dell'anello, quindi non lo inoltra più.\\
 
 Può $x$ terminare? 
 \begin{itemize}
@@ -997,3 +996,116 @@ Quando è terminato il calcolo del leader da parte degli \texttt{initiator}, il 
 \end{itemize}
 
 %End L23
+
+\newpage
+
+\subsection{Problema \texttt{Routing}}
+L'entità $x$ vuole mandare un messaggio all'entità $y$ e vuole sapere il percorso, ovvero \textbf{individuare un cammino} in $\vec{G}$ da $x$ a $y$.\\
+
+Per risolverlo potrebbe essere sufficiente usare il \texttt{Broadcast}, da $x$ a tutte le altre entità. Ma questo è, ovviamente, molto inefficiente.\\
+
+Allora \textbf{scegliamo un cammino tra i tanti possibili} tra $x$ e $y$, senza preoccuparci di che cammino sia, ma se è il migliore, meglio.\\
+
+\subsection{Problema \texttt{Shortest Path}}
+Determinare il \textbf{cammino di costo minimo} tra $x$ e $y$ in $\vec{G}$.\\
+Ha molte applicazioni in ambito di comunicazione, cruciale in una computazione di un sistema distribuito.\\
+
+Richiede di usare memoria e informazioni sui costi di $\vec{G}$ per ogni entità $x \in E$, al fine di \textbf{calcolare i cammini minimi verso ogni altra entità}.
+
+\paragraph{Restrizioni:} IR (bidirectional link, connectivity, total reliability e ID), anche in questo caso $\forall x \in E$ abbiamo $id(x)$.\\
+
+Le \textbf{strategie} per risolvere questo problema differiscono in base al \textbf{tipo di informazioni} che le entità tengono in memoria. Si ha un trade-off tra memoria usata e tempo/quantità di comunicazione.\\
+
+\paragraph{Full Routing Table:} Qualunque siano le \textbf{informazioni} memorizzate dalle entità nella loro memoria locale, andranno tutte comunque a \textbf{convergere verso una tabella} chiamata "Full Routing", necessaria per ogni strategia.\\
+
+Si tratta di una tabella \textbf{costruita per ogni entità}, in quanto ogni entità deve avere la sua, e \textbf{contiene destinazione}, \textbf{cammino minimo} e \textbf{costo}.
+
+\newpage
+
+\subsubsection{Protocollo \texttt{Gossiping}}
+
+Idea: \textbf{ogni entità} prima si \textbf{costruisce la mappa del sistema} $G$ e all'occorrenza si \textbf{calcola le righe della Full Routing Table}. Il grafo si rappresenta tramite \textbf{matrice di adiacenza}.\\
+
+Per \textbf{costruire} $MAP(G)$, ovvero la matrice di adiacenza, in un ambiente distribuito è sufficiente che \textbf{ogni entità} $x$ \textbf{diffonda le proprie informazioni sui vicini} a ogni altra entità $y \in E$.\\
+
+\textbf{Map-Gossip:}
+\begin{itemize}
+	\item Costruzione di un albero $T$ per $G$, usato per definire dove passare i messaggi alle entità del grafo
+	\item Ogni entità acquisisce dai vicini $id$ e costi dei link (nel caso non ne fosse a conoscenza)
+	\item Ogni entità diffonde le sue informazioni a tutte le altre entità usando i link di $T$
+\end{itemize}
+Questo consente di costruire una mappa di $G$ e poi usare algoritmi su grafo per lo shortest path (e.g., Dijkstra).\\
+
+\paragraph{Complessità:}
+\begin{itemize}
+	\item \textbf{Numero di messaggi}:
+	\begin{itemize}
+		\item spanning tree: $O(m + n \log n)$ per l'algoritmo migliore
+		\item acquisire info vicini: $2m$ (andata e ritorno su ogni arco)
+		\item broadcast di informazioni su $T$: $2m (n-1)$, costo di \texttt{Broadcast} su $n$ entità (si esclude la radice)
+	\end{itemize}
+	In totale
+	$$ M[MapGossip] \sim 2m \cdot n \sim O(n^2) $$
+	è più importante il numero di archi, ma se $m \approx n$ ($G$ è sparso) possiamo dire $O(n^2)$.\\
+	
+	\item \textbf{Tempo:} difficile da calcolare. Si sommano i tempi dello spanning tree e il tempo del broadcast. Quindi il tempo \textbf{dipende dal diametro della rete}.\\
+\end{itemize}
+
+\newpage
+
+\subsubsection{Protocollo \texttt{Iterated-Construction}}
+Il protocollo precedente potrebbe richiedere molta memoria, quindi l'idea di questo protocollo è di costruire la Full Routing Table senza usare la mappa di $G$ ma attraverso una \textbf{serie di iterazioni} per costruire a più riprese la tabella. Sostanzialmente \href{https://it.wikipedia.org/wiki/Routing_Information_Protocol}{\texttt{RIP}}.\\
+
+\textbf{Inizialmente} la FRT contiene \textbf{solo le informazioni dei vicini}, per le entità non collegate si indica un valore "infinito", sostituito appena possibile da un costo più ragionevole nelle iterazioni successive.\\
+
+Da notare che la FRT di un'entità $x$ \textbf{non deve contenere tutto il percorso} verso $z$, basta \textbf{memorizzare il vicino coinvolto}, poi ci penserà lui.\\
+
+Da \textbf{mantenere nella FRT}: per l'entità $x$: $\forall z \in E, z \neq x$
+\begin{itemize}
+	\item il costo dello shortest path per $z$ 
+	\item il primo link dello shortest path, ovvero il prossimo nodo
+\end{itemize}
+
+\paragraph{Definizione:} \textbf{Distance Vector}, la FRT ristretta alle colonne contenenti \textbf{destinazione e costo}, viene indicata con il vettore $V$ (i.e., una FRT parziale, manca il vicino a cui spedirlo, ma non importa alle altre entità).\\
+Notazione: $V_x [z] =$ costo del cammino minimo da $x$ a $z$.\\
+
+\paragraph{Iterazione:}
+\begin{itemize}
+	\item ogni entità \textbf{diffonde} la propria $V$ ai suoi vicini 
+	\item sulla base delle info ricevute dai vicini ogni entità stabilisce se ci sono cammini migliori di quelli presenti nella propria FRT e in tal caso la \textbf{aggiorna}
+\end{itemize}
+
+Bisogna effettuare $n-1$ \textbf{iterazioni}. Si può dimostrare per induzione.\\
+
+\newpage
+
+Come fa un'entità $x$ a \textbf{individuare il cammino minimo} per una certa entità $z$ a \textbf{ogni iterazione}?\\
+
+Sia $v_y^i[z]$ il costo del cammino minimo da $y$ a $z$ ottenuto da $y$ alla $i$-esima iterazione, di conseguenza alla $i+1$-esima iterazione questo costo arriva ai vicini di $y$ e sia $y \in N(x)$ (i.e., è un vicino di $x$).\\
+
+Alla $i+1$-esima iterazione $x$ \textbf{calcola}:
+$$ w[z] = \min_{y \in N(x)} \{\theta(x,y) + V_y^i [z] \}$$
+dove $\theta(x,y)$ è il costo del link $(x,y)$. Sostanzialmente guarda tra tutti i vicini quale "propone" il cammino migliore verso $z$, una volta sommato il costo di raggiungere quel vicino.\\
+
+Una volta trovato il path migliore per l'iterazione aggiorna la FRT, aggiornando costo e quale vicino è il successivo nel path.\\
+
+\paragraph{Vantaggi di questo approccio:} Memoria, la mappa occupa spazio $O(n^2)$, mentre la sola FRT è lineare in $n$, $O(n)$.\\
+
+\paragraph{Complessità:} 
+\begin{itemize}
+	\item \textbf{Numero di messaggi:}
+	$$ M[It\_Constr/IR] = 2m \cdot n \cdot (n-1) $$
+	$2m$ sono gli archi, $n-1$ il numero di iterazioni e servono $n$ messaggi per spedire $V$.\\
+	
+	\item \textbf{Tempo:}
+	$$ T[It\_Constr/IR] = (n-1) \cdot \tau(n)$$
+	dove $\tau(n)$ è il tempo ideale per trasmettere $V$, che può essere
+	\begin{itemize}
+		\item costante $O(1)$ quando $G$ consente messaggi lunghi 
+		\item altrimenti lineare $O(n)$
+	\end{itemize}
+	nel primo caso $\tau(n)$ diventa una costante, quindi il tempo è \textbf{lineare} in $n$ e $m$, $O(mn)$.\\
+\end{itemize}
+
+%End L24
+%Fine del corso :(
