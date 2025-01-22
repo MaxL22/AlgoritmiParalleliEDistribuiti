@@ -1,0 +1,56 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{APD}
+
+\RequirePackage{amsfonts}
+\RequirePackage{amssymb}
+\RequirePackage{amsmath}
+\RequirePackage{amsthm}
+\RequirePackage[Algoritmo, ruled]{algorithm}
+\RequirePackage{algpseudocode}
+
+\algblockdefx[ParDoAll]{ParDoAll}{EndParDoAll}%
+	[1]{\textbf{for} {#1} \textbf{par do}}%
+	{\textbf{end par do}}
+
+\algblockdefx[ParDo]{ParDo}{EndParDo}%
+	[2]{\textbf{for} {#1} \textbf{to} {#2} \textbf{par do}}%
+	{\textbf{end par do}}
+
+\algblockdefx[PBlock]{PBlock}{EndPBlock}%
+	[2][P]{${#1}_{#2}:$ \textbf{begin}}%
+	{\textbf{end}}
+
+\algblockdefx[DefineBhv]{DefineBhv}{EndDefine}%
+	[1]{\textbf{Define} {#1} \textbf{as}}%
+	{\textbf{end def}}
+
+\algblockdefx[WhenMsg]{WhenMsg}{EndWhen}%
+	[1]{\textbf{when receveing} {#1} \textbf{do}}%
+	{\textbf{end when}}
+
+\newcommand\PReturn[1]{\State{\textbf{return} {#1}}}
+
+\newcommand\Receive[2]{\State{\textbf{receive into} {#1} \textbf{from} {#2}}}
+\newcommand\Send[2]{\State{\textbf{send} {#1} \textbf{to} {#2}}}
+\newcommand\Become[1]{\State{\textbf{become} {#1}}}
+
+\newcommand\naturals{\mathbb{N}}
+
+\newcommand\PState[3][P]{\State{$#1_{#2}$: {#3}}}
+
+\newcommand\vecAt[2]{{#1}\!\left [ \, {#2} \, \right ]}
+
+\newcommand\algrefbtwn[3]{\algref{#1}{#2}-\ref{#3}}
+
+\DeclareMathOperator{\des}{des}
+\DeclareMathOperator{\pad}{pad}
+
+\theoremstyle{plain}
+\newtheorem{thm}{Teorema}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{fact}{Fatto}[section]
+\newtheorem{rmk}{Nota}[section]
+
+\theoremstyle{definition}
+\newtheorem{define}{Definizione}[section]
+\newtheorem{exmpl}{Esempio}[section]

@@ -384,7 +384,7 @@ Si possono vedere \textbf{due fasi}, una in cui vengono inviati i dati (con il \
 		\item per la fase di \texttt{Compare} il costo è $2$, per ogni $j = 1, \, \dots \,, \log n$
 	\end{itemize}
 	In totale
-	$$ t = \sum_{j=1}^{\log n} 2 \cdot s^{j-1} + \sum_{j=1}^{\log n} 2 = 2n-2 + 2 \log n = O(n) $$
+	$$ t = \sum_{j=1}^{\log n} 2 \cdot 2^{j-1} + \sum_{j=1}^{\log n} 2 = 2n-2 + 2 \log n = O(n) $$
 	\nn
 	
 	\item \textbf{Processori}: ne usa $n$, ma non va troppo bene, $E \rightarrow 0$.\\
@@ -753,7 +753,7 @@ L'\textbf{output} sono gli $n$ valori ordinati in ordine crescente quando letto 
 		LS3Sort(M(*$_3$*))
 		LS3Sort(M(*$_4$*))
 		
-		LS3Merge(M(*$_1$*), M(*$_2$*), M(*$_3$*), M(*$_4$*))
+	LS3Merge(M(*$_1$*), M(*$_2$*), M(*$_3$*), M(*$_4$*))
 \end{lstlisting}
 
 Quindi \texttt{LS3Merge} si occupa di in una sola le 4 matrici ordinate. Come viene costruita? Riunisce la matrice "in place" ed effettua due routine, \texttt{Shuffle} (per la descrizione vedi \hyperref[subsec:shuffle]{\texttt{il capitolo relativo}}) e \texttt{Odd-Even} (vedi \hyperref[subsec:ordinamento]{\texttt{capitolo relativo}}).\\

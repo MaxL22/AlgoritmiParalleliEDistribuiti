@@ -161,7 +161,7 @@ Dove:
 \textbf{Esempio di definizione} $P$ per \texttt{Broadcast}:
 \begin{itemize}
 	\item $P_{init}$: una sola entità detiene l'informazione $I$ e le altre identità non la hanno, i.e., 
-	$$ \exists x \in E \; \text{ t.c. }\; valore(x) = I \; \wedge \; \forall x \neq y \;\; valore (y) = \emptyset $$
+	$$ \exists x \in E \; \text{ t.c. }\; valore(x) = I \; \wedge \; \forall y \neq x \;\; valore (y) = \emptyset $$
 	
 	\item $P_{final}$: tutte le entità posseggono $I$
 	$$ \forall x \in E \;\;\; valore(x) = I $$
@@ -175,7 +175,7 @@ Dove:
 
 Un algoritmo distribuito, o \textbf{protocollo}, è un \textbf{insieme di regole della forma}: 
 \begin{center}
-	stato $\times$ evento $\rightarrow$ azione
+	\texttt{stato $\times$ evento $\rightarrow$ azione}
 \end{center}
 Lo stato$_t (x)$ è lo stato dell'entità $x$ al tempo $t$. \\
 L'evento può essere l'impulso spontaneo, la sveglia o la ricezione di un messaggio. \\

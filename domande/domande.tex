@@ -1,0 +1,787 @@
+% !TeX spellcheck = it_IT
+\documentclass[12pt, answers]{exam}
+\usepackage[italian]{babel}
+\usepackage{tikz}
+\usetikzlibrary{math, positioning, chains, scopes, matrix, graphs}
+
+\usepackage{APD}
+
+\begin{document}
+\section{Algoritmi paralleli a memoria condivisa}
+\begin{questions}
+	\question Sommatoria:
+	\begin{parts}
+		\part Definizione del problema sommatoria
+		\begin{solution}
+			Dato in input un vettore $A$, vorremmo avere in output 
+			$$\vecAt{A}{n} = \sum_{i = 1}^n \vecAt{A}{i}$$
+		\end{solution}
+		\part Dare una soluzione sequenziale indicando la complessità in tempo
+		\begin{solution}
+			Una soluzione sequenziale consiste banalmente in un singolo ciclo che somma i valori in una variabile accumulatore
+			\begin{algorithmic}
+				\State{$acc \gets 0$}
+				\For{$i \gets 1$ \textbf{to} $n$}
+					\State{$acc \gets acc + \vecAt{A}{i}$}
+				\EndFor
+				\State{$A[n] \gets acc$}
+			\end{algorithmic}
+			questo algoritmo impiega tempo lineare ($n - 1$).
+		\end{solution}
+		\part Dare una soluzione EREW su PRAM con relativo codice
+		\begin{solution}
+			si sommano i valori a distanza $2^{i - 1}$, per $i$ da $1$ a $\log n$.
+			quindi
+			\begin{algorithmic}
+				\For{$i \gets 1$ \textbf{to} $\log n$}
+					\ParDo{$k \gets 1$}{$\frac{n}{2^i}$}
+						\State{$\vecAt{A}{2^ik} \gets \vecAt{A}{2^ik} + \vecAt{A}{2^ik - 2^{i - 1}}$}
+					\EndParDo
+				\EndFor
+			\end{algorithmic}
+			L'algoritmo è chiaramente EREW:
+			\begin{itemize}
+				\item le celle scritte ad ogni iterazioni sono banalmente diverse;
+				\item le celle lette allo stesso passo sono diverse, supponiamo infatti che non lo siano, ci sono 3 casi:
+					\begin{itemize}
+						\item per due $k$ e $k'$ vale che $2^ik$ sia uguale a $2^ik'$, che è banalmente falso;
+						\item per due $k$ e $k'$ vale che $2^ik - 2^{i - 1}$ sia uguale a $2^ik' - 2^{i - 1}$, che è banalmente falso;
+						\item per due $k$ e $k'$ vale che $2^ik$ sia uguale a $2^ik' - 2^{i - 1}$, ma, raggruppando per $2^{i - 1}$ otteniamo
+							$$ 2k = 2k' - 1 $$
+							che è falso visto che un numero è necessariamente pari e l'altro dispari.
+					\end{itemize}
+			\end{itemize}
+		\end{solution}
+		\part Valutare la complessità dell'algoritmo proposto e l'efficienza
+		\begin{solution}
+			L'algoritmo proposto utilizza
+			\begin{align*}
+				p(n) &= \frac{n}{2} \\
+				T(n, p(n)) &= \log n
+			\end{align*}
+			ottenendo come efficienza
+			$$ E(n, p(n)) = \frac{n}{n \log n} \rightsquigarrow 0 $$
+			Proviamo quindi ad utilizzare Wyllie per ridurre il numero di processori.
+			Scegliamo un numero di processori $p(n) = p$: ogni processore svolge $\frac{n}{p}$ somme sequenziali e poi si applica l'algoritmo di sopra, in modo da ottenere
+			$$ T(n, p) = \frac{n}{p} + \log p $$
+			e
+			$$ E(n, p) = \frac{n}{p\left ( \frac{n}{p} + \log p \right )} = \frac{n}{n + p \log p} $$
+			scegliamo ora $p = \frac{n}{\log n}$, in modo da ottenere
+			$$ E\left (n, \frac{n}{\log n} \right ) = \frac{n}{n + n} \rightsquigarrow c \neq 0$$
+		\end{solution}
+	\end{parts}
+	\question Tecnica del cammino euleriano:
+	\begin{parts}
+		\part Come si espandono i vertici
+		\begin{solution}
+			Ogni vertice viene espanso in 3: sinistra, centro, destra
+			$$ v \in V \rightarrow (v,s), (v,c), (v,d) $$
+		\end{solution}
+		\part Costruzione lista successore
+		\begin{solution}
+			Per ogni vertice definiamo il suo successore:
+			\begin{itemize}
+				\item se $v$ è una foglia, allora $\vecAt{S}{v_s} = v_c$;
+				\item se $v$ è una foglia, allora $\vecAt{S}{v_c} = v_d$;
+				\item se $v$ non è una foglia, allora $\vecAt{S}{v_s} = \mathrm{sin}(v)_s$;
+				\item se $v$ non è una foglia, allora $\vecAt{S}{v_c} = \mathrm{des}(v)_s$;
+				\item se $v$ è il figlio di sinistra del padre, allora $\vecAt{S}{v_d} = \mathrm{pad}(v)_c$;
+				\item se $v$ è il figlio di destra del padre, allora $\vecAt{S}{v_d} = \mathrm{pad}(v)_d$.
+			\end{itemize}
+		\end{solution}
+	\end{parts}
+	\question Sequenze unimodali, bitoniche e sorting
+	\begin{parts}
+		\part Definizione di sequenze unimodali e bitoniche
+		\begin{solution}
+			Una sequenza unimodale è una sequenza che contiene un ``picco'', cioè una sequenza di numeri per cui esiste un indice $k$ tale che
+			\begin{align*}
+				\vecAt{A}{1} \leq \dots &\leq \vecAt{A}{k} \geq \dots \geq \vecAt{A}{n} \\
+				                        &\text{oppure}					\\
+				\vecAt{A}{1} \geq \dots &\geq \vecAt{A}{k} \leq \dots \leq \vecAt{A}{n}
+			\end{align*}
+			Una sequenza bitonica è una sequenza dal quale -- attraverso una permutazione ciclica -- si può ottenere una sequenza unimodale.
+			Cioè per cui esiste un $i$ per cui
+			$$ \vecAt{A}{i}, \vecAt{A}{i + 1}, \dots, \vecAt{A}{n}, \dots, \vecAt{A}{1}, \dots, \vecAt{A}{i - 1} $$
+			è unimodale.
+		\end{solution}
+        	\part Implementazione della routine BitMerge di ordinamento di sequenze bitoniche
+		\begin{solution}
+			\begin{algorithmic}
+				\State{$A_{\min}, A_{\max} \gets \Call{MinMax}{A}$}
+				\If{$|A| > 2$}
+					\State{\Call{BitMerge}{$A_{\min}$}}
+					\State{\Call{BitMerge}{$A_{\max}$}}
+				\EndIf
+				\State{\Return{$A$}}
+			\end{algorithmic}
+		\end{solution}
+		\part Esempio di dinamica ricorsiva di BitMerge, su una piccola istanza di input, usando un grafico
+		\begin{solution}
+			\begin{center}
+				\begin{tikzpicture}
+					\node[draw] {\textsc{MinMax}} [sibling distance=7cm]
+						child  { 
+							node[draw] {\textsc{BitMerge}}
+							child [sibling distance=3cm] { 
+								node[draw] {\textsc{MinMax}}
+								child { node {$\dots$} }
+								child { node {$\dots$} }
+							}
+						}
+						child  { 
+							node[draw] {\textsc{BitMerge}}
+							child [sibling distance=3cm] { 
+								node[draw] {\textsc{MinMax}}
+								child { node {$\dots$} }
+								child { node {$\dots$} }
+							}
+						};
+				\end{tikzpicture}
+			\end{center}
+		\end{solution}
+		\part Valutazione dell'algoritmo, tempo e processori
+		\begin{solution}
+			Associamo ad ogni chiamata ricorsiva un processore, per cui, al massimo, serviranno $\frac{n}{2}$ processori.
+			L'algoritmo genera la seguente equazione di ricorrenza
+			$$ T(n) = 
+			\begin{cases}
+				1 & \text{se } n = 2 \\
+				T\left (\frac{n}{2} \right) + O(1) & \text{altrimenti}
+			\end{cases}
+			$$
+			da cui otteniamo un tempo di 
+			$$ T(n, p(n)) = \log n $$
+			da qui otteniamo come efficienza
+			$$ E(n, p(n)) = \frac{n\log n}{n \log n} \rightsquigarrow c \neq 0 $$
+		\end{solution}
+		\part Correttezza di BitMerge
+		\begin{solution}\\
+			Procediamo per induzione sulla dimensione dell'array:
+			\begin{itemize}
+				\item \textsc{Base}: per $n = 2$, l'array è banalmente ordinato dalla chiamata a \textsc{MinMax};
+				\item \textsc{Passo}: supponiamo che l'algoritmo ordini correttamente sequenze bitoniche di dimensione $2^k$, mostriamo che ordina correttamente anche sequenze bitoniche di $2^{k + 1}$.
+					Vale che chiamare \textsc{MinMax} ritorna due sequenze bitoniche di dimensione $2^k$, e che tutti gli elementi della sequenza bitonica $A_{\min}$ sono minori di tutti gli elementi della sequenza bitonica $A_{\max}$.
+					Infine, chiamare \textsc{BitMerge} su $A_{\min}$ e $A_{\max}$ le ordina correttamente per ipotesi induttiva, concludendo la dimostrazione.
+			\end{itemize}
+		\end{solution}
+	\end{parts}
+	\question Rispondi alle seguenti domande
+	\begin{parts}
+        	\part Definizione di ``Speed-Up'' ed ``Efficienza''
+		\begin{solution}
+			Lo Speed-Up è il rapporto tra il tempo dell'algoritmo sequenziale ottimo e il tempo di un algoritmo parallelo.
+			Se questo tende a 0 vuol dire che l'algoritmo parallelo è troppo inefficiente.
+
+			Il problema principale dello Speed-Up è che questo non tiene conto del numero di processori utilizzati.
+			Per questo esiste l'efficienza, che corrisponde a il rapporto tra lo Speed-Up e il numero di processori, o
+			$$ E(n, p(n)) = \frac{S(n, p(n))}{p(n)} = \frac{T^\ast(n, 1)}{p(n)T(n, p(n))} $$
+			dove $T^\ast(n, 1)$ indica il tempo migliore sequenziale.
+			L'efficienza è un valore compreso tra $0$ e $1$.
+
+			Mostriamo che l'efficienza è al massimo $1$:
+				$$ T(n, 1) \geq \hat{T}(n, 1) = \sum_{i=0}^{k(n)} p(n) t_i(n) = p(n) \sum_{i = 0}^{k(n)} t_i(n) = p(n) T(n, p(n)) $$
+			quindi $T(n, 1) \geq p(n) T(n, p(n))$, perciò il loro rapporto è per forza $\leq 1$.
+		\end{solution}
+        	\part Dare uno schema di un algoritmo parallelo $A$ che usa $p$ processori.
+			Modificare $A$ per $\frac{p}{k}$ processori e indicare la relazione tra i tempi paralleli dell'algoritmo appena modificato e l'algoritmo $A$.
+			\begin{solution}
+				Un algoritmo parallelo è una matrice di istruzioni
+				\begin{center}
+					\begin{tabular}{r|ccc}
+						 	 & $P_1$    & $\dots$  & $P_n$ \\
+						\hline
+						1:       & $i_{11}$ & $\dots$  & $i_{1n}$ \\
+						$\vdots$ & $\vdots$ & $\ddots$ & $\dots$ \\
+						$m$:     & $i_{m1}$ & $\dots$  & $i_{mn}$
+					\end{tabular}
+				\end{center}
+				Applicare Wyllie significa far svolgere a $\frac{p}{k}$ processori $k$ operazioni sequenziali ognuno.
+				In questo modo il tempo si modifica nel seguente modo
+				$$ T\left (n, \frac{p}{k}\right ) \leq \sum_{i = 0}^{k(n)} k t_i(n) = k \sum_{i = 0}^{k(n)} t_i(n) = k T(n, p) $$
+			\end{solution}
+        	\part Mostra cosa succede al parametro efficienza se si diminuiscono i processori da $p$ a $p/k$
+		\begin{solution}
+			Utilizzando la disequazione di sopra otteniamo che
+			$$ E(n, p) = \frac{T(n, 1)}{p \cdot T(n, p)} = \frac{T(n, 1)}{\frac{p}{k}k \cdot T(n, p)} \leq \frac{T(n, 1)}{\frac{p}{k} T\left(n, \frac{n}{p} \right)} = E \left(n, \frac{p}{k} \right)$$
+			quindi si può provare a utilizzare Wyllie per aumentare l'efficienza quando questa tende a 0.
+		\end{solution}
+	\end{parts}
+	\question Somme prefisse
+	\begin{parts}
+		\part Esempio spiegazione e algoritmo di Kogge-stone
+		\begin{solution}
+			Il problema somme prefisse prende in input un vettore $A$ di dimensione $n$ e ritorna in output il vettore tale che
+			$$ \forall k \in n, \vecAt{A}{k} = \sum_{i = 1}^k \vecAt{A}{k} $$
+			Per questo problema esiste una soluzione efficiente chiamata metodo di Kogge-Stone, basato sul pointer doubling.
+			Le celle del vettore sono legate a distanza $2^i$, e ogni processore si occupa di fare la somma di uno di questi legami.
+			L'algoritmo codifica i legami attraverso un vettore $S$, che -- per ogni cella -- contiene il suo successore o 0 se questo è fuori range.
+
+			Inizialmente il vettore $S$ è inizializzato nel seguente modo
+			$$ \vecAt{S}{k} = 
+			\begin{cases}
+				0 & \text{se } $k = n$ \\
+				k + 1 & \text{altrimenti}
+			\end{cases}
+			$$
+
+			\begin{algorithmic}
+				\For{$i \gets 1$ \textbf{to} $\log n$}
+					\ParDo{$k \gets 1$}{$n - 2^{i - 1}$}
+						\State{$\vecAt{A}{\vecAt{S}{k}} \gets \vecAt{A}{k} + \vecAt{A}{\vecAt{S}{k}}$}
+						\If{$\vecAt{S}{k} \neq 0$}
+							\State{$\vecAt{S}{k} \gets \vecAt{S}{\vecAt{S}{k}}$}
+						\EndIf
+					\EndParDo
+				\EndFor
+			\end{algorithmic}
+		\end{solution}
+		\part Prestazioni
+		\begin{solution}
+			L'algoritmo proposto utilizza
+			\begin{align*}
+				p(n) &= n \\
+				T(n, p(n)) &= \log n
+			\end{align*}
+			ottenendo come efficienza
+			$$ E(n, p(n)) = \frac{n}{n \log n} \rightsquigarrow 0 (\text{lentamente})$$
+			
+			Possiamo quindi usare Wyllie:
+			\begin{align*}
+				p(n) &= O\left(\frac{n}{\log n}\right) \\
+				T(n, p(n)) &= O(\log n)
+			\end{align*}
+			E di conseguenza:
+			$$ E(n, p(n)) = \frac{n}{\frac{n}{\log n} \cdot \log n} \rightsquigarrow c \neq 0 $$
+		\end{solution}
+	\end{parts}
+	\question Ricerca di un elemento
+	\begin{parts}
+		\part Definizione del problema
+		\begin{solution}
+			Dato un valore $\alpha$ e un vettore $M$ di dimensione $n$ in input, in $\vecAt{M}{n}$ ci dovrà essere $1$ se $\alpha$ è presente in $M$ altrimenti $-1$.
+		\end{solution}
+		\part Pseudocodice CRCW, CREW, EREW con le prestazioni in tempo e processori per ciascuno.
+		\begin{solution}
+			Possiamo dare una prima versione CRCW
+			\begin{algorithmic}
+				\State{$F \gets -1$}
+				\ParDo{$i \gets 1$}{$n$}
+					\If{$\vecAt{M}{i} = \alpha$}
+						\State{$F \gets 1$}
+					\EndIf
+				\EndParDo
+				\State{$\vecAt{M}{n} \gets F$}
+			\end{algorithmic}
+			Dove il flag $F$ serve per non sovrascrivere $\vecAt{M}{n}$.
+
+			Mostriamo ora un algoritmo CREW che fa utilizzo di \textsc{Max} (definito come \textsc{Sommatoria})
+			\begin{algorithmic}
+				\ParDo{$i \gets 1$}{$n$}
+					\If{$\vecAt{M}{i} = \alpha$}
+						\State{$\vecAt{M}{i} \gets 1$}
+					\Else
+						\State{$\vecAt{M}{i} \gets 0$}
+					\EndIf
+				\EndParDo
+				\State{\Call{Max}{$M$}}
+			\end{algorithmic}
+			Qui possiamo usare direttamente Wyllie per ridurre il numero di processori a
+			\begin{align*}
+				p(n) &= \frac{n}{\log n} \\
+				T(n, p(n)) &= \log n \\
+				E(n, p(n)) &= \frac{n}{p(n)T(n, p(n))} \rightsquigarrow c \neq 0
+			\end{align*}
+
+			Infine possiamo utilizzare \textsc{Broadcast}, così definito
+			\begin{algorithmic}
+				\State{$\vecAt{A}{1} \gets \alpha$}
+				\For{$i \gets 1$ \textbf{to} $\log n$}
+					\ParDo{$k \gets 1$}{$2^i - 1$}
+						\State{$\vecAt{A}{k + 2^{i - 1}} \gets \vecAt{A}{k}$}
+					\EndParDo
+				\EndFor
+			\end{algorithmic}
+			per diffondere il dato $\alpha$ tra tutti i processori ed eliminare le letture concorrenti.
+
+			In questo modo otteniamo il seguente algoritmo
+			\begin{algorithmic}
+				\State{\Call{Broadcast}{$A, \alpha$}}
+				\ParDo{$i \gets 1$}{$n$}
+					\If{$\vecAt{M}{i} = \vecAt{A}{i}$}
+						\State{$\vecAt{M}{i} \gets 1$}
+					\Else
+						\State{$\vecAt{M}{i} \gets 0$}
+					\EndIf
+				\EndParDo
+				\State{\Call{Max}{$M$}}
+			\end{algorithmic}
+			che è efficiente ed EREW.
+		\end{solution}
+	\end{parts}
+\end{questions}
+\section{Algoritmi paralleli a memoria distribuita}
+\begin{questions}
+	\question Nell'ambito degli array lineari presentare quanto segue:
+	\begin{parts}
+		\part Definizione del problema \textsc{MAX}
+		\begin{solution}
+			Dati dei valori tali che
+			$$ \mathrm{cont}(P_1) = a_1, \dots, \mathrm{cont}(P_n) = a_n $$
+			vogliamo che
+			$$ \mathrm{cont}(P_n) = \max \{ \mathrm{cont}(P_k) \mid k \in 1, \dots, n \} $$
+			su array lineari sappiamo che il diametro è $n - 1$ e sappiamo che la complessità del \textsc{Max} deve essere per forza almeno $d$.
+		\end{solution}
+        	\part Dare uno schema di un algoritmo parallelo per MAX
+		\begin{solution}
+			Similmente al problema sommatoria per i processori a memoria condivisa, facciamo il massimo di elementi a distanza $2^{i - 1}$ per $i$ da $1$ a $\log n$, e poniamo il risultato nella cella di indice maggiore.
+			A differenza del problema sommatoria per i processori a memoria condivisa, nella memoria distribuita è necessario anche gestire l'invio dei dati, che non è più necessariamente costante.
+			\begin{algorithmic}
+				\For{$i \gets 1$ \textbf{to} $\log n$}
+					\ParDo{$k \gets 1$}{$\frac{n}{2^i}$}
+						\State{\Call{Send}{$\vecAt{A}{2^ik - 2^{i - 1}}, \vecAt{A}{2^ik}$}}
+					\EndParDo
+					\ParDo{$k \gets 1$}{$\frac{n}{2^i}$}
+						\State{$\vecAt{A}{2^ik} \gets \Call{Max}{\vecAt{A}{2^ik}, \vecAt{A}{2^ik - 2^{i - 1}}}$}
+					\EndParDo
+				\EndFor
+			\end{algorithmic}
+		\end{solution}
+        	\part Dare il numero di processori e tempo parallelo richiesto dall'algoritmo presentato
+		\begin{solution}
+			Il numero di processori è $p(n) = \frac{n}{2}$.
+			Il tempo richiesto dall'algoritmo è dato dalla somma dei tempi delle due fasi ripetute $\log n$ volte
+			\begin{align*}
+				T(n, p(n)) &= \sum_{i = 1}^{\log n} 2 \cdot 2^{i - 1} + \sum_{i = 1}^{\log n} 2 \\
+					   &= 2\frac{1 - 2^{\log n}}{1 - 2} + 2\log n \\
+					   &= 2n - 2 + 2\log n \\
+					   &= O(n)
+			\end{align*}
+			per cui otteniamo
+			$$ E(n, p(n)) = \frac{n}{n^2} \rightsquigarrow 0 $$
+		\end{solution}
+        	\part Riduzione dei processori per migliorare il parametro efficienza
+		\begin{solution}
+			Possiamo provare quindi a ridurre il numero di processori a $p$, svolgendo alcuni dei \textsc{Max} sequenzialmente:
+			\begin{align*}
+				p(n) &= p \\
+				T(n, p(n)) &= \frac{n}{p} + p 
+			\end{align*}
+			da cui si ottiene come efficienza
+			$$ E(n, p(n)) = \frac{n}{p\left(\frac{n}{p} + p\right)} = \frac{n}{n + p^2} \xrightarrow{p = \sqrt{n}} \frac{n}{n + n} \rightsquigarrow c \neq 0 $$ 
+		\end{solution}
+	\end{parts}
+	\question Nell'ambito delle architetture parallele a memoria distribuita:
+        \begin{parts}
+		\part Descrivere l'architettura mesh e fornire parametri di rete
+		\begin{solution}
+			L'architettura mesh è formata da una matrice di $n$ processori, quindi di dimensione $\sqrt{n} \times \sqrt{n}$, collegati nelle direzioni cardinali.
+			Quindi i parametri sono
+			\begin{align*}
+				\gamma &= 4 \\
+				\delta &= 2\sqrt{n} \\
+				\beta  &= \sqrt{n}
+			\end{align*}
+			Questa architettura è quella più comune per i supercomputer.
+		\end{solution}
+        	\part Definire il problema Max e sua soluzione su Mesh, processori e tempo
+		\begin{solution}
+			Dati dei valori caricati sulla mesh a serpentina (da sinistra a destra sulle righe dispari e da destra a sinistra sulle righe pari), vogliamo che
+			$$ \mathrm{cont}(P_n) = \max \{ \mathrm{cont}(P_k) \mid k \in 1, \dots, n \} $$
+			Possiamo fornire un algoritmo che esegue il massimo su ogni riga considerandole come array lineari, e che infine svolge il massimo sulla riga finale.
+			Questo algoritmo necessita
+			\begin{align*}
+				p(n) &= n \\
+				T(n, p(n)) &= \sqrt{n}
+			\end{align*}
+			quindi non è efficiente.
+		\end{solution}
+        	\part Riduzione dei processori per una soluzione ottimale di Max, processori e tempo
+		\begin{solution}
+			Proviamo ancora a ridurre i processori a un certo valore $p$.
+			Ogni processore svolgerà $\frac{n}{p}$ passi di \textsc{Max} sequenziale e poi svolgerà l'algoritmo di sopra.
+			In questo modo otteniamo che
+			\begin{align*}
+				p(n) = p \\
+				T(n, p(n)) &= \frac{n}{p} + \sqrt{p} 
+			\end{align*}
+			e come efficienza
+			$$ E(n, p(n)) = \frac{n}{p \left ( \frac{n}{p} + \sqrt{p} \right)} = \frac{n}{n + p\sqrt{p}} \xrightarrow{p = n^{\frac{2}{3}}} \frac{n}{n + n} \rightsquigarrow c \neq 0$$ 
+		\end{solution}
+	\end{parts}
+	\question Definire il modello delle architetture parallele a memoria distribuita: mesh
+	\begin{parts}
+        	\part Definire il problema Ordinamento su mesh
+		\begin{solution}
+			Dati i valori caricati sulla mesh a serpentina, vogliamo che la mesh contenga una permutazione ordinata degli stessi valori sempre letta a serpentina.
+		\end{solution}
+		\part Descrivere l'algoritmo \textsc{LS3Sort}
+		\begin{solution}
+			L'algoritmo è un algoritmo di tipo divide-et-impera	
+			\begin{algorithmic}
+				\Function{LS3Sort}{$M$}
+					\If{$|M| = 1$}
+						\State{\Return{$M$}}
+					\Else
+						\ParDoAll{$k \in \{1, 2, 3, 4\}$}
+							\State{\Call{LS3Sort}{$M_k$}}
+						\EndParDoAll
+						\State{\Call{LS3Merge}{$M_1, M_2, M_3, M_4$}}
+						\State{\Return{$M$}}
+					\EndIf
+				\EndFunction
+			\end{algorithmic}
+			dove ogni chiamata ricorsiva opera sui 4 quadranti risultato della divisone della matrice in componenti di dimensione $\frac{\sqrt{n}}{2} \times \frac{\sqrt{n}}{2}$.
+		\end{solution}
+		\part Descrivere la procedura \textsc{LS3Merge} e la sua valutazione in tempo
+		\begin{solution}
+			La routine \textsc{LS3Merge} si occupa di ricomporre la matrice a partire dalle 4 sottomatrici ordinate.
+			Fa questo attraverso 3 passi:
+			\begin{itemize}
+				\item per ogni riga della matrice esegue \textsc{Shuffle} come se fosse un array lineare, quindi $\sqrt{n}$ passi;
+				\item per ogni coppia di colonne esegue \textsc{OddEven} leggendole a serpentina, in tempo $2\sqrt{n}$ passi;
+				\item infine esegue i primi $2\sqrt{n}$ passi di \textsc{OddEven} sull'intera matrice.
+			\end{itemize}
+			si può vedere facilmente che \textsc{LS3Merge} impiega $O(\sqrt{n})$ passi.	
+			Ora possiamo scrivere l'equazione di ricorrenza dell'algoritmo
+			$$ T(n) =
+			\begin{cases}
+				1 & \text{se } n = 1 \\
+				T\left(\frac{n}{4}\right) + O(\sqrt{n}) & \text{altrimenti}
+			\end{cases}
+			$$
+			Quindi si ottiene
+			$$ T(n, p(n)) = O(\sqrt{n}) $$
+			che rimane non efficiente.
+		\end{solution}
+	\end{parts}
+	\question Nell'ambito delle architetture parallele a memoria distribuita:
+        \begin{parts}
+		\part Definire il problema ordinamento e la sorting network \textsc{OddEven},
+		\begin{solution}
+			Dati $n$ valori caricati sui processori, si vuole che alla fine il contenuto dei processori sia una permutazione ordinata dei valori originali.
+			
+			Per risolvere il problema dell'ordinamento su array lineari si utilizza una sorting network chiamata \textsc{OddEven}.
+			Questa per $n$ volte confronta -- e nel caso scambia -- coppie di valori, alternando confronti di coppie pari e dispari.
+		\end{solution}
+		\part Descrivere l’implementazione di \textsc{OddEven} su array lineari,
+		\begin{solution}
+			\begin{algorithmic}
+				\For{$i \gets 1$ \textbf{to} $n$}
+					\ParDo{$k \gets 0$}{$\frac{n}{2} - 1$}
+						\State{\Call{MinMax}{$\vecAt{A}{2k + \langle i \rangle_2}, \vecAt{A}{2k + \langle i \rangle_2 + 1}$}}
+					\EndParDo
+				\EndFor
+			\end{algorithmic}
+			quindi sono necessari 
+			\begin{align*}
+				p(n) &= \frac{n}{2} \\
+				T(n, p(n)) &= n
+			\end{align*}
+			per cui l'algoritmo non è efficiente.
+		\end{solution}
+		\part Descrivere l’algoritmo \textsc{MergeSplit} su array lineari
+		\begin{solution}
+			Una versione alternativa di \textsc{OddEven} è l'algoritmo \textsc{MergeSplit}.
+			In questo ci sono $p$ processori, contenenti $\frac{n}{p}$ elementi ciascuno, i quali vengono inizialmente ordinati sequenzialmente in $\frac{n}{p} \log \frac{n}{p}$ passi.
+			Successivamente, per $p$ volte, si alternano due fasi:
+			\begin{itemize}
+				\item i processori pari inviano i loro $\frac{n}{p}$ dati al processore successivo, questo fa il merge con i propri dati in tempo $2\frac{n}{p}$ e ritorna i $\frac{n}{p}$ dati minori al mittente.
+				\item lo stesso avviene coi processori dispari, a fasi alterne.
+			\end{itemize}
+			Per questo nuovo algoritmo 
+			\begin{align*}
+				p(n) &= p \\
+				T(n, p(n)) &= \frac{n}{p} \log \frac{n}{p} + p\left(2\frac{n}{p} + 2\frac{n}{p} \right) = \frac{n}{p} \log \frac{n}{p} + n
+			\end{align*}
+			da cui otteniamo una efficienza di
+			$$ E(n, p(n)) = \frac{n\log n}{p\left(\frac{n}{p}\log \frac{n}{p}  + n\right)} = \frac{n\log n}{n\log n - n \log p + pn} $$
+			scegliendo $p = \log n$ otteniamo infine
+			$$ E(n, \log n) = \frac{n \log n}{n \log n - n \log^2 n + n \log n} \rightsquigarrow c \neq 0 $$
+			Da notare come il tempo sia rimasto $O(n)$ perché non abbiamo modificato l'ampiezza di bisezione ma solo il diametro.
+		\end{solution}
+	\end{parts}
+	\question Reti di confrontatori:
+	\begin{parts}
+		\part Cos'è una rete di confrontatori
+		\begin{solution}
+			Un confrontatore è un componente che prende due input ed ha due output: confronta i due valori in input e manda il massimo in un output e il minimo nell'altro.
+			Di solito i confrontatori sono composti in reti, concatenando gli output di un confrontatore nell'input di un altro.
+
+			Una rete di confrontatori può essere vista anche come una funzione
+			$$ R(x_1, \dots, x_n) = (y_1, \dots, y_n) $$
+			dove $(y_1, \dots, y_n)$ è una permutazione di $(x_1, \dots, x_n)$.
+
+		\end{solution}
+		\part Cosa è sorting network e principio 0-1
+		\begin{solution}
+			Nello specifico, se $(y_1, \dots, y_n)$ è una permutazione ordinata di \\ $(x_1, \dots, x_n)$, allora $R$ è detta sorting network.
+				
+			Per dimostrare che una certa sorting network sia corretta si può utilizzare il principio 0-1: una sorting network è corretta se ordina correttamente ogni $(x_1, \dots, x_n) \in \{0, 1\}^n$.
+			Cioè per dimostrare la correttezza di una sorting network la si può valutare solo su input binari.
+		\end{solution}
+	\end{parts}
+\end{questions}
+
+\section{Algoritmi distribuiti}
+\begin{questions}
+	\question Shortest path:
+	\begin{parts}
+		\part Introdurre il problema \textsc{ShortestPath}
+		\begin{solution}
+			Il problema consiste nel, data una rete con restrizioni $IR$, fare in modo che ogni entità sia a conoscenza del cammino di costo minimo verso ogni altra entità.
+			Ci sono diverse versioni in base al numero di messaggi che si è disposti a inviare e alla quantità di memoria che si è disposti a usare per ogni processore.
+		\end{solution}
+		\part Cos'è la Full Routing Table
+		\begin{solution}
+			La Full Routing Table (FRT) è una tabella presente in ogni entità che, per ogni altra entità, contiene il costo e il cammino minimo.
+			Per tutti gli algoritmi di \textsc{ShortestPath} lo stato contenuto all'interno dei ogni entità dovrà convergere verso una FRT.
+		\end{solution}
+		\part Il protocollo \textsc{Iterated-Construction}
+		\begin{solution}
+			Ogni entità $x$ mantiene un vettore $V_x$, chiamato distance vector, che inizialmente contiene solo le distanze dei suoi vicini o infinito per le entità non direttamente collegate.
+			La particolarità del distance vector è che non contiene il percorso completo alla destinazione, ma piuttosto contiene solo il prossimo nodo.
+
+			Ogni entità manda il proprio distance vector ai vicini, e, alla ricezione, ogni entità aggiorna il proprio distance vector 
+			$$ \vecAt{V_x}{z} = \min_{y \in N(x)} \{ \theta(x, y) + \vecAt{V_y}{z} \} $$
+			dove $\theta(x, y)$ è il costo del link tra $x$ e $y$. Se c'è un percorso migliore di quelli già conosciuti aggiorna la propria FRT.
+
+			Questo protocollo ha il vantaggio che ogni processore deve mantenere solo $O(n)$ informazioni, al contrario delle $O(n^2)$ del protocollo \textsc{Gossiping}.
+			Inoltre il numero di messaggi è
+			$$ M[ \textsc{IteratedConstruction}] = 2m \cdot n \cdot (n - 1) $$
+			dove 
+			\begin{itemize}
+				\item $2m$ è il numero di distance vector inviati;
+				\item $n$  è il tempo per inviare un distance vector;
+				\item $(n - 1)$ è il numero di iterazioni necessarie affinché ogni distance vector arrivi a tutti (alla $j$-esima iterazione ho informazioni sui nodi lontani $j$ e la massima distanza è $n-1$).
+			\end{itemize}
+			mentre il tempo è
+			$$ T[\textsc{IteratedConstruction}] = (n - 1) \cdot \tau(n) $$
+			dove
+			\begin{itemize}
+				\item $(n - 1)$ è ancora il numero di iterazioni necessarie affinché il distance vector di tutti arrivi a tutti;
+				\item $\tau(n)$ è il tempo necessario ad inviare il distance vector, $O(1)$ se il sistema permette messaggi lunghi, $O(n)$ altrimenti.
+			\end{itemize}
+		\end{solution}
+		\part Protocollo \textsc{Gossiping}
+		\begin{solution}
+			Ogni nodo si costruisce l'intera matrice di adiacenza $MAP(G)$ al suo interno, e poi utilizza questa per calcolarsi la Full Routing Table.
+			La problematica principale di questo algoritmo è che ogni nodo deve contenere l'intero grafo, che occupa $O(n^2)$.
+
+			In sostanza l'algoritmo si articola nel seguente modo:	
+			\begin{enumerate}
+				\item si costruisce lo spanning tree su $G$;
+				\item ogni entità fa il broadcast delle sue informazioni ai vicini sullo spanning tree;
+				\item ogni entità che riceve il messaggio di un'altra aggiorna la propria matrice di adiacenza $MAP(G)$.
+			\end{enumerate}
+			Il numero di messaggi corrisponde all'incirca a $n$ broadcast, quindi
+			$$ M[\textsc{Gossipping}] = 2mn \approx O(n^2) $$
+			se il grafo è sparso.
+
+			Il tempo invece è difficile da calcolare, ma dipende dal diametro.
+		\end{solution}
+	\end{parts}
+	\question Broadcast:
+	\begin{parts}
+		\part Presentazione \textsc{Broadcast}
+		\begin{solution}
+			Il \textsc{Broadcast} è il problema di diffondere un'informazione sull'intera rete.
+			Formalmente questo è definito nel seguente modo:
+			\begin{align*}
+				P_{init}  &: \forall x \in \mathcal{E}, (\mathrm{stato}(x) = iniziatore \wedge \mathrm{valore}(x) = I) \vee (\mathrm{stato}(x) = inattivo) \\
+				P_{final} &: \forall x \in \mathcal{E}, \mathrm{valore}(x) = I \\
+				R         &: RI
+			\end{align*}
+		\end{solution}
+		\part Descrizione protocollo 
+		\begin{solution}
+			Come protocollo abbiamo visto \textsc{Flooding}. 
+			Questo ha tre stati:
+			\begin{align*}
+				S_{start} &= \{ iniziatore \} \\
+				S_{init} &= \{ iniziatore, inattivo \} \\
+				S_{final} = S_{term} &= \{ finito \}
+			\end{align*}
+			Quando un nodo nello stato $iniziatore$ riceve l'impulso iniziale, manda a tutti i suoi vicini il dato $I$ e passa allo $finito$.
+			Quando invece un nodo nello stato $inattivo$ riceve il valore $I$, lo inoltra a tutti i vicini tranne il mittente, e passa allo stato $finito$.
+
+		\end{solution}
+		\part Prestazioni e lower bound
+		\begin{solution}
+			In questo modo l'algoritmo ha le seguenti caratteristiche
+			\begin{align*}
+				M[\textsc{Flooding}] &= \sum_{x \in \mathcal{E}} (N(x) - 1) + 1 = 2m - n + 1 = O(m)\\
+				T[\textsc{Flooding}] &\leq d
+			\end{align*}
+
+			Per un lower bound temporale, è chiaro che nel caso peggiore ci si metta
+			$$ T[\textsc{Broadcast}] \geq d $$
+			che corrisponde al caso in cui l'iniziatore sia un estremo del diametro.
+
+			Mentre si può dimostrare che 
+			$$ M[\textsc{Broadcast}] \geq m $$
+			infatti supponendo che sia minore, in un grafo $G$ ci deve essere almeno un arco su cui non passano messaggi.
+			Sia questo arco l'arco le due entità $x$ e $y$.
+			Supponiamo di estendere $G$ con un entità $z$ e di collegare $x$ a $y$ attraverso $z$, associando l'etichetta che prima era quella dell'arco $(x, y)$ ai nuovi archi $(x, z)$ e $(z, y)$.
+			
+			Ora visto che nell'algoritmo precedente non viaggiavano nodi sull'arco etichettato $\lambda_x(x, y)$, e $\lambda_x(x, y) = \lambda_x(x, z)$, allora nel nuovo grafo non verrà esplorato $z$, che quindi non potrà ricevere il dato di cui dovevamo fare il \textsc{Broadcast}.
+		\end{solution}
+	\end{parts}
+	\question Traversal:
+	\begin{parts}
+		\part Definire il problema \textsc{Traversal}
+		\begin{solution}
+			Il problema del \textsc{Traversal} consiste nell'esplorare il grafo in modo sequenziale.
+			Questo problema ha lower bound per i messaggi 
+			$$ M[\textsc{Traversal}]\geq m $$
+			per le stesse ragioni del \textsc{Broadcast}.
+			
+			Lower bound per il tempo
+			$$ T[\textsc{Traversal}] \geq n  - 1 $$
+			visto che ogni nodo deve essere visitato in sequenza.
+
+		\end{solution}
+		\part Funzionamento di \textsc{DFTraversal} e sua complessità
+		\begin{solution}
+			Implementeremo il traversal su una rete $RI$ come una visita in profondità.
+			Utilizzeremo:
+			\begin{itemize}
+				\item quattro stati
+			\begin{align*}
+				S &= \{ iniziatore, inattivo, attivo, finito \} \\
+				S_{start} &= \{ iniziatore \} \\
+				S_{init} &= \{ iniziatore, inattivo \} \\
+				S_{term} = S_{final} &= \{ finito \}
+			\end{align*}
+				\item tre tipi di messaggi
+			\begin{align*}
+				T &\; \text{token} \\
+				R &\; \text{return} \\
+				B &\; \text{back-edge}
+			\end{align*}
+				caratteristica di questo algoritmo è la presenza in ogni momento di un singolo messaggio $T$ in circolo nella rete.
+				\item nodi contenenti
+					\begin{itemize}
+						\item un booleano che indica se sono o no l'iniziatore, e nel caso non lo siano il padre
+						\item una lista di nodi non visitati
+					\end{itemize}
+			\end{itemize}
+			L'algoritmo segue lo schema:
+			\begin{enumerate}
+				\item se sono l'iniziatore, alla ricezione dell'impulso iniziale imposto come non visitati tutti i miei vicini, ed inizio la procedura di visita;
+				\item se sono idle e ricevo il token $T$ imposto come non visitati tutti i vicini meno il sender e come padre il sender, ed inizio la procedura di visita;
+				\item se sono attivo e ricevo o $B$ o $R$, chiamo la procedura di visita;
+				\item se sono attivo e ricevo il token $T$ rispondo con un messaggio $B$;
+			\end{enumerate}
+			dove la procedura di visita è definita nel seguente modo:
+			\begin{enumerate}
+				\item divento attivo;
+				\item se la lista dei non visitati è finita allora rispondo $R$ al padre se ne ho uno, e passo allo stato $finito$;
+				\item altrimenti estraggo un vicino dalla lista dei non visitati e gli invio il token $T$ e aspetto la risposta.
+			\end{enumerate}
+			
+			Nell'algoritmo così definito su ogni arco passano 2 messaggi (token e risposta due volte), per cui
+			$$ M[\textsc{DFTraversal}] = 2m $$
+			e visto che l'algoritmo è sequenziale, otteniamo che il tempo non può che essere dello stesso ordine di grandezza del numero di messaggi
+			$$ T[\textsc{DFTraversal}] = 2m $$
+
+			Si può definire una versione migliore di \textsc{DFTraversal}, chiamata \textsc{DFTraversal}$^\ast$, che opera senza i messaggi utilizzando invece un messaggio $visited$ che viene inviato in maniera asincrona rispetto al token $T$ nel momento in cui un'entità lo riceve per la prima volta.
+			L'algoritmo così definito ha le seguenti caratteristiche
+			\begin{align*}
+				M[\textsc{DFTraversal}^\ast] &= O(m) \\
+				T[\textsc{DFTraversal}^\ast] &= O(n)
+			\end{align*}
+		\end{solution}
+	\end{parts}
+	\question Nell'ambito dei sistemi distribuiti spiegare:
+	\begin{parts}
+        	\part Cos'è un protocollo
+		\begin{solution}
+			Un protocollo è l'unione di tutti i comportamenti per ogni entità, cioè
+			$$ B(\mathcal{E}) = \bigcup_{x \in \mathcal{E}} B(x) $$
+			un protocollo deve essere omogeneo, cioè due entità nella stessa rete non devono avere comportamenti diversi in risposta allo stesso evento e stato.
+		\end{solution}
+        	\part La configurazione di un sistema al tempo $t$
+		\begin{solution}
+			La configurazione di un sistema al tempo $t$, $C(t)$, è composta da due elementi:
+			\begin{itemize}
+				\item $\Sigma(t)$, l'insieme di tutti gli stati di tutte le entità;
+				\item $\mathrm{Futuro}(t)$, l'insieme di tutti gli eventi non ancora processati.
+			\end{itemize}
+		\end{solution}
+        	\part Come viene definito un problema $P$
+		\begin{solution}
+			Un problema è definito come una tripla
+			$$ P = \langle P_{init}, P_{final}, R \rangle $$
+			dove
+			\begin{itemize}
+				\item $P_{init}$ è un predicato che una configurazione iniziale deve rispettare;
+				\item $P_{final}$ è un predicato che una configurazione finale deve rispettare;
+				\item $R$ è l'insieme delle restrizioni di rete che si assumono.
+			\end{itemize}
+			Le restrizioni di rete sono delle particolari caratteristiche della rete che vengono assunte, nel nostro caso ne utilizzeremo 5:
+			\begin{itemize}
+				\item link bidirezionali;
+				\item connettività totale (della rete);
+				\item affidabilità totale, cioè mancanza di errori in passato e in futuro;
+				\item iniziatore unico;
+				\item initial distinct values, cioè ogni entità è identificabile da un valore.
+			\end{itemize}
+		\end{solution}
+        	\part Come viene formalizzata la soluzione di $P$ mediante un protocollo che termina
+		\begin{solution}
+			Dato un protocollo, questo trasforma una configurazione $C(t)$ in una $C(t + 1)$, dove lo stato $\Sigma(t + 1)$ e gli eventi da processare $\mathrm{Futuro}(t + 1)$ sono ottenuti processando gli eventi in $\mathrm{Futuro}(t)$ nello stato $\Sigma(t)$ con il protocollo.
+			Si dice che un protocollo termina se questo porta eventualmente ad una configurazione finale, cioè una configurazione in cui $\mathrm{Futuro}(t') = \varnothing$.
+
+			Un protocollo è corretto se partendo da una configurazione che rispetta il predicato iniziale del problema, questo termina e la configurazione finale rispetta il predicato finale.
+		\end{solution}
+	\end{parts}
+	\question Problema dello \textsc{SpanningTree}
+	\begin{parts}
+		\part Definizione
+		\begin{solution}
+			Il problema dello \textsc{SpanningTree} è definito su reti $RI$, e consiste nel trovare un sottografo del grafo $G$ privo di cicli. 
+			
+			Alcuni problemi hanno complessità che dipende dal numero di archi, di conseguenza ridurre questo valore permette di ridurre la complessità del problema.
+		\end{solution}
+		\part Protocollo \textsc{Shout+}
+		\begin{solution}
+			Nel protocollo \textsc{Shout+} ci sono
+			\begin{itemize}
+				\item quattro stati
+					\begin{align*}
+						S &= \{ iniziatore, inattivo, attivo, finito \} \\
+						S_{start} &= \{ iniziatore \} \\
+						S_{init} &= \{ iniziatore, inattivo \} \\
+						S_{term} = S_{final} &= \{ finito \}
+					\end{align*}
+				\item due tipi di messaggi
+					\begin{align*}
+						Q &\; \text{question} \\
+						Y &\; \text{yes}
+					\end{align*}
+				\item nodi contententi
+					\begin{itemize}
+						\item un booleano che indica se l'entità è o no la radice, e nel caso non lo siano il padre;
+						\item un insieme, inizialmente vuoto, dei vicini membri dell'albero;
+						\item un contatore, inizializzato al numero di vicini.
+					\end{itemize}
+			\end{itemize}
+			Il protocollo procede nel seguente modo:
+			\begin{itemize}
+				\item se sono l'iniziatore e ricevo l'impulso iniziale, mando a tutti i vicini il messaggio $Q$ e passo nello stato attivo;
+				\item se sono inattivo e ricevo il messaggio $Q$, imposto come padre il sender, mando a tutti i vicini (tranne il sender) il messaggio $Q$ e passo nello stato attivo;
+				\item se sono attivo e ricevo un messaggio $Y$, aggiungo il sender all'insieme dei vicini che fanno parte del mio albero e decremento il contatore;
+				\item se sono attivo e ricevo un messaggio $Q$, decremento il contatore;
+				\item se sono attivo e il contatore è a 0, divento $finito$.
+			\end{itemize}
+			
+			Questo protocollo impiega
+			\begin{align*}
+				M[\textsc{Shout+}] &= 2m \\
+				T[\textsc{Shout+}] &= d + 1
+			\end{align*}
+		\end{solution}
+	\end{parts}
+\end{questions}
+\end{document}
